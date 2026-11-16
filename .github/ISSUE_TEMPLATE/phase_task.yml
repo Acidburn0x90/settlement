@@ -1,0 +1,30 @@
+name: Phase Task
+description: Track a roadmap milestone task or subsystem
+title: "[Phase X]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Roadmap Phase
+      options:
+        - Phase 0 - Pure-Java Sandbox
+        - Phase 1 - Persistence & Terrain Scanner
+        - Phase 2 - Room Flood-Fill & Brain Hook
+        - Phase 3 - Burgage Plots & Builder
+        - Phase 4 - ACO Roads & Fringe Belts
+        - Phase 5 - Performance & Multi-Town Trade
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal & Acceptance Criteria
+      description: What observable behavior or JUnit test proves this task is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Architecture / Performance Notes
+      description: Any TPS, chunk-boundary, or hexagonal boundary considerations.
