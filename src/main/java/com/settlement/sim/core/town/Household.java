@@ -1,5 +1,7 @@
 package com.settlement.sim.core.town;
 
+import java.util.UUID;
+
 /**
  * Represents a domestic economic unit within a settlement.
  * <p>
@@ -7,12 +9,39 @@ package com.settlement.sim.core.town;
  * Pure-Java domain model with zero Minecraft dependencies.
  */
 public class Household {
+    private final UUID id;
+    private int workers;
+    private int dependents;
 
-    // TODO: Define unique household identifier and assigned dwelling reference
+    public Household(UUID id, int workers, int dependents) {
+        if (id == null) throw new IllegalArgumentException("ID must not be null");
+        if (workers < 0 || dependents < 0) throw new IllegalArgumentException("Counts must be >= 0");
 
-    // TODO: Define member collection and demographic tracking
+        this.id = id;
+        this.workers = workers;
+        this.dependents = dependents;
+    }
 
-    // TODO: Implement subsistence consumption calculation per member
+    // Getters
+    public int getTotalMembers() {
+        return (workers + dependents);
+    }
 
-    // TODO: Implement domestic grain allocation and birth eligibility checks
+    public int getWorkers() {
+        return workers;
+    }
+
+    public int getDependents() {
+        return dependents;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public double dependencyRatio() {
+        return (double) getTotalMembers() / Math.max(1, workers);
+    }
+
+
 }
