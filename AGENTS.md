@@ -17,6 +17,12 @@ Primary reference: [Minecraft Settlement Mod Research Roadmap.md](Minecraft%20Se
 7. **Style & Scale:** Single biome-adaptive timber/stone palette and single self-sustaining town through Phase 4; multi-town trade graph in Phase 5.
 8. **Player Loop:** Ambient survival integration via Minecraft 26.1 data-driven villager trades (`data/settlement/villager_trade/`) synced to town scarcity.
 
+## Direction & Simulation Invariants
+- **Resilience:** Villages never die or collapse to zero population; adverse conditions, crop failures, or resource deficits cap or stall growth at a subsistence equilibrium rather than extinguishing the settlement.
+- **Seasons & Calendar:** Target a 100-day Minecraft year divided into four full seasons (`SPRING`, `SUMMER`, `AUTUMN`, `WINTER`) governing temperature, rainfall, and seasonal crop cycles.
+- **External Dependencies:** Prefer integrating existing purpose-made mods (e.g., seasons/crops) via clean port interfaces (`SeasonPort`, etc.) rather than reinventing complex environmental mechanics in-house, **only with explicit developer approval** before introducing any external dependency.
+- **Repo Security:** Strictly enforce repository cleanliness — never commit tokens, credentials, `.env` files, local `/home/` file paths, or machine-specific IP addresses.
+
 ## Five-Tier Top-Down Package Layout
 - **Tier 1 (Entry & Registration):** `com.settlement.mc.SettlementMod`
 - **Tier 2 (Macro World Network):** `com.settlement.sim.core.world` + `com.settlement.mc.persistence`
@@ -32,6 +38,7 @@ Primary reference: [Minecraft Settlement Mod Research Roadmap.md](Minecraft%20Se
 ## Collaboration & Agent Role
 - **User-Led Implementation:** The developer writes all domain and mod code themselves.
 - **Agent Role:** Strictly **guidance, architecture review, performance/TPS analysis, and debugging insight**. Do not write non-boilerplate feature code unless the developer explicitly asks.
+- **Research Grounding:** Proactively search and cite established research in game theory, medieval history, sociology, urban morphology, and historical traditions to keep simulation mechanics realistic and grounded in proven methods.
 - **GitHub Workflow:** Work via feature branches (`feat/phase-0-...`), Pull Requests targeting `main`, and GitHub Issues/Milestones.
 
 ## Build & Verification Commands
