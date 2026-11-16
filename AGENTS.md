@@ -43,6 +43,12 @@ Primary reference: [Minecraft Settlement Mod Research Roadmap.md](Minecraft%20Se
 - **Research Grounding:** Proactively search and cite established research in game theory, medieval history, sociology, urban morphology, and historical traditions to keep simulation mechanics realistic and grounded in proven methods.
 - **GitHub Workflow:** Work via feature branches (`feat/phase-0-...`), Pull Requests targeting `main`, and GitHub Issues/Milestones.
 
+## Getting Started (Collaborators & IDE Setup)
+1. **Clone & Verify:** `git clone https://github.com/Acidburn0x90/settlement.git` and run `./gradlew test --no-daemon` (Gradle `9.2.0` + Foojay `1.0.0` auto-provisions Java `25`).
+2. **IntelliJ Setup:** Set **Project SDK** (`File → Project Structure`) and **Gradle JVM** (`Settings → Build Tools → Gradle`) to **Java 25**, then click **Reload All Gradle Projects** so `clientDataRun`/`serverDataRun` and JUnit 5 index cleanly.
+3. **Pick a Task & Branch:** Claim an open GitHub Issue (e.g., `#3`–`#22`) and cut a branch from `main`: `git switch -c feat/phase-X-short-name`.
+4. **TDD Loop:** Write JUnit 5 tests in `src/test/java/com/settlement/sim/core/` first, implement pure-Java logic in `sim.core` (or thin NeoForge adapters in `mc.*`), verify `./gradlew test --no-daemon`, and open a PR targeting `main` (`Closes #<id>`).
+
 ## Build & Verification Commands
 - **Unit Tests (Pure Java):** `./gradlew test`
 - **Full Build:** `./gradlew build`
