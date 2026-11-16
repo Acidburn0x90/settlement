@@ -19,7 +19,9 @@ Primary reference: [Minecraft Settlement Mod Research Roadmap.md](Minecraft%20Se
 
 ## Direction & Simulation Invariants
 - **Resilience:** Villages never die or collapse to zero population; adverse conditions, crop failures, or resource deficits cap or stall growth at a subsistence equilibrium rather than extinguishing the settlement.
-- **Seasons & Calendar:** Target a 100-day Minecraft year divided into four full seasons (`SPRING`, `SUMMER`, `AUTUMN`, `WINTER`) governing temperature, rainfall, and seasonal crop cycles.
+- **Seasons & Calendar:** Target a 100-day Minecraft year divided into four full seasons (`SPRING`, `SUMMER`, `AUTUMN`, `WINTER`) running on **4 sub-daily economic & AI shifts/day** (`6,000` ticks/shift, `400` shifts/year).
+- **Vanilla Coexistence & Founding:** Leave vanilla villages 100% untouched; custom settlements spawn separately as a **Founder Hamlet** and grow organically.
+- **Authoritative Ledger & Growth Stages:** `sim.core` `Stockpile` (`SavedData`, integer calorie/seed-corn units) is authoritative while physical Granary chests sync as a visual/player deposit interface. Population grows with food surplus and housing capacity through **Hierarchy Stages** (`HAMLET` → `VILLAGE` → `TOWN` → `CITY` → `REGION`), guarded by $x/n$ tick throttling.
 - **External Dependencies:** Prefer integrating existing purpose-made mods (e.g., seasons/crops) via clean port interfaces (`SeasonPort`, etc.) rather than reinventing complex environmental mechanics in-house, **only with explicit developer approval** before introducing any external dependency.
 - **Repo Security:** Strictly enforce repository cleanliness — never commit tokens, credentials, `.env` files, local `/home/` file paths, or machine-specific IP addresses.
 
