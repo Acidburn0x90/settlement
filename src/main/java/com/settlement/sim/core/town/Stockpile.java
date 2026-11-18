@@ -1,5 +1,7 @@
 package com.settlement.sim.core.town;
 
+import com.settlement.sim.core.SimulationConstants;
+
 /**
  * Authoritative communal food and seed-corn ledger for a settlement.
  * <p>
@@ -29,11 +31,11 @@ public class Stockpile {
      * @throws IllegalArgumentException if {@code capacity < 0}
      */
     public Stockpile(long capacity) {
-        if (capacity < 0) {
+        if (capacity < SimulationConstants.ZERO_RESERVE) {
             throw new IllegalArgumentException("Capacity must be >= 0");
         }
-        this.calorieUnits = 0;
-        this.seedUnits = 0;
+        this.calorieUnits = SimulationConstants.ZERO_RESERVE;
+        this.seedUnits = SimulationConstants.ZERO_RESERVE;
         this.capacity = capacity;
     }
 

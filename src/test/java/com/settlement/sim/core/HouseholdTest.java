@@ -79,41 +79,41 @@ class HouseholdTest {
     }
 
     @Test
-    @DisplayName("receiveHarvestAndTithe fills seed target then subsistence buffer before tithing surplus")
-    void receiveHarvestPrioritizesSeedAndBufferBeforeTithe() {
+    @DisplayName("allocateHarvest fills seed target then subsistence buffer before sharing surplus")
+    void allocateHarvestPrioritizesSeedAndBufferBeforeSharingSurplus() {
         Household hh = new Household(UUID.randomUUID(), 2, 0, 10L, 5L);
 
-        // Need +15 seed (to reach 20), +30 calories (to reach 40). Harvest of 45 leaves 0 surplus -> 0 tithe.
-        long tithe = hh.receiveHarvestAndTithe(45L, 20L, 40L, 0.20);
+        // Need +15 seed (to reach 20), +30 calories (to reach 40). Harvest of 45 leaves 0 surplus -> 0 communal share.
+        long communalShare = hh.allocateHarvest(45L, 20L, 40L, 0.20);
 
-        assertEquals(0L, tithe);
+        assertEquals(0L, communalShare);
         assertEquals(20L, hh.getDomesticSeed());
         assertEquals(40L, hh.getDomesticCalories());
     }
 
     @Test
-    @DisplayName("receiveHarvestAndTithe tithes 20% of surplus above seed and subsistence targets")
-    void receiveHarvestTithesSurplusAboveTargets() {
+    @DisplayName("allocateHarvest contributes 20% communal share of surplus above seed and subsistence targets")
+    void allocateHarvestSharesSurplusAboveTargets() {
         Household hh = new Household(UUID.randomUUID(), 2, 0, 40L, 20L);
 
-        // Seed and buffer already full -> all 100 is surplus -> 20% tithe = 20, household keeps 80 (total 120)
-        long tithe = hh.receiveHarvestAndTithe(100L, 20L, 40L, 0.20);
+        // Seed and buffer already full -> all 100 is surplus -> 20% communal share = 20, household keeps 80 (total 120)
+        long communalShare = hh.allocateHarvest(100L, 20L, 40L, 0.20);
 
-        assertEquals(20L, tithe);
+        assertEquals(20L, communalShare);
         assertEquals(20L, hh.getDomesticSeed());
         assertEquals(120L, hh.getDomesticCalories());
     }
 
     @Test
-    @DisplayName("consumeShift and receiveHarvestAndTithe reject invalid negative or out-of-range arguments")
+    @DisplayName("consumeShift and allocateHarvest reject invalid negative or out-of-range arguments")
     void invalidConsumptionAndHarvestArgsRejected() {
         Household hh = new Household(UUID.randomUUID(), 1, 0);
 
         assertThrows(IllegalArgumentException.class, () -> hh.consumeShift(-1));
-        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(-1L, 0L, 0L, 0.20));
-        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, -1L, 0L, 0.20));
-        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, 0L, -1L, 0.20));
-        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, 0L, 0L, -0.1));
-        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, 0L, 0L, 1.1));
+        assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(-1L, 0L, 0L, 0.20));
+        assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(10L, -1L, 0L, 0.20));
+        assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(10L, 0L, -1L, 0.20));
+        assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(10L, 0L, 0L, -0.1));
+        assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(10L, 0L, 0L, 1.1));
     }
 }

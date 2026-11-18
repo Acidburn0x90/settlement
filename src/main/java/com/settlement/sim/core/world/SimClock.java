@@ -1,5 +1,7 @@
 package com.settlement.sim.core.world;
 
+import com.settlement.sim.core.SimulationConstants;
+
 /**
  * Pure-Java simulation clock running on 4 sub-daily shifts per Minecraft day
  * across a 100-day seasonal year (25 days / 100 shifts per season).
@@ -10,13 +12,13 @@ package com.settlement.sim.core.world;
 public class SimClock implements SeasonPort {
 
     /** Number of economic and AI shifts in one Minecraft day (6,000 ticks each). */
-    public static final int SHIFTS_PER_DAY = 4;
+    public static final int SHIFTS_PER_DAY = SimulationConstants.SHIFTS_PER_DAY;
 
     /** Number of Minecraft days in each of the four seasons. */
-    public static final int DAYS_PER_SEASON = 25;
+    public static final int DAYS_PER_SEASON = SimulationConstants.DAYS_PER_SEASON;
 
     /** Total Minecraft days in one full simulated year. */
-    public static final int DAYS_PER_YEAR = 100;
+    public static final int DAYS_PER_YEAR = SimulationConstants.DAYS_PER_YEAR;
 
     /**
      * Sub-daily work and rest phases within a single Minecraft day.
@@ -27,6 +29,12 @@ public class SimClock implements SeasonPort {
         EVENING,
         NIGHT
     }
+
+    /** Cached enum values to avoid array allocation on every shift/season lookup. */
+    private static final Shift[] SHIFTS = Shift.values();
+
+    /** Cached season values to avoid array allocation on every season lookup. */
+    private static final Season[] SEASONS = Season.values();
 
     /** Monotonic count of elapsed simulation shifts since world/settlement epoch. */
     private long totalShifts;
@@ -86,7 +94,7 @@ public class SimClock implements SeasonPort {
      * @return current {@link Shift} ({@code MORNING}..{@code NIGHT})
      */
     public Shift getCurrentShift() {
-        return Shift.values()[(int) (totalShifts % SHIFTS_PER_DAY)];
+        return SHIFTS[(int) (totalShifts % SHIFTS_PER_DAY)];
     }
 
     /**
@@ -108,6 +116,6 @@ public class SimClock implements SeasonPort {
      */
     @Override
     public Season getCurrentSeason() {
-        return Season.values()[(getDayOfYear() - 1) / DAYS_PER_SEASON];
+        return SEASONS[(getDayOfYear() - 1) / DAYS_PER_SEASON];
     }
 }
