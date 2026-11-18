@@ -48,5 +48,72 @@ class HouseholdTest {
         assertThrows(IllegalArgumentException.class, () -> new Household(null, 1, 0));
         assertThrows(IllegalArgumentException.class, () -> new Household(validId, -1, 0));
         assertThrows(IllegalArgumentException.class, () -> new Household(validId, 1, -1));
+        assertThrows(IllegalArgumentException.class, () -> new Household(validId, 1, 0, -1L, 0L));
+        assertThrows(IllegalArgumentException.class, () -> new Household(validId, 1, 0, 0L, -1L));
+    }
+
+    @Test
+    @DisplayName("consumeShift deducts from domesticCalories and returns 0 deficit when covered")
+    void consumeShiftCoversFullNeedFromDomesticCalories() {
+        Household hh = new Household(UUID.randomUUID(), 2, 1, 50L, 15L);
+
+        // 3 members * 10 cal/shift = 30 needed
+        long deficit = hh.consumeShift(10);
+
+        assertEquals(0L, deficit);
+        assertEquals(20L, hh.getDomesticCalories());
+        assertEquals(15L, hh.getDomesticSeed());
+    }
+
+    @Test
+    @DisplayName("consumeShift returns unmet deficit without touching ring-fenced domesticSeed")
+    void consumeShiftReturnsUnmetDeficitWithoutTouchingSeed() {
+        Household hh = new Household(UUID.randomUUID(), 1, 1, 12L, 25L);
+
+        // 2 members * 10 cal/shift = 20 needed, only 12 available -> 8 deficit
+        long deficit = hh.consumeShift(10);
+
+        assertEquals(8L, deficit);
+        assertEquals(0L, hh.getDomesticCalories());
+        assertEquals(25L, hh.getDomesticSeed());
+    }
+
+    @Test
+    @DisplayName("receiveHarvestAndTithe fills seed target then subsistence buffer before tithing surplus")
+    void receiveHarvestPrioritizesSeedAndBufferBeforeTithe() {
+        Household hh = new Household(UUID.randomUUID(), 2, 0, 10L, 5L);
+
+        // Need +15 seed (to reach 20), +30 calories (to reach 40). Harvest of 45 leaves 0 surplus -> 0 tithe.
+        long tithe = hh.receiveHarvestAndTithe(45L, 20L, 40L, 0.20);
+
+        assertEquals(0L, tithe);
+        assertEquals(20L, hh.getDomesticSeed());
+        assertEquals(40L, hh.getDomesticCalories());
+    }
+
+    @Test
+    @DisplayName("receiveHarvestAndTithe tithes 20% of surplus above seed and subsistence targets")
+    void receiveHarvestTithesSurplusAboveTargets() {
+        Household hh = new Household(UUID.randomUUID(), 2, 0, 40L, 20L);
+
+        // Seed and buffer already full -> all 100 is surplus -> 20% tithe = 20, household keeps 80 (total 120)
+        long tithe = hh.receiveHarvestAndTithe(100L, 20L, 40L, 0.20);
+
+        assertEquals(20L, tithe);
+        assertEquals(20L, hh.getDomesticSeed());
+        assertEquals(120L, hh.getDomesticCalories());
+    }
+
+    @Test
+    @DisplayName("consumeShift and receiveHarvestAndTithe reject invalid negative or out-of-range arguments")
+    void invalidConsumptionAndHarvestArgsRejected() {
+        Household hh = new Household(UUID.randomUUID(), 1, 0);
+
+        assertThrows(IllegalArgumentException.class, () -> hh.consumeShift(-1));
+        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(-1L, 0L, 0L, 0.20));
+        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, -1L, 0L, 0.20));
+        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, 0L, -1L, 0.20));
+        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, 0L, 0L, -0.1));
+        assertThrows(IllegalArgumentException.class, () -> hh.receiveHarvestAndTithe(10L, 0L, 0L, 1.1));
     }
 }
