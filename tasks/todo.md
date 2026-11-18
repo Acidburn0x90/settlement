@@ -3,9 +3,9 @@
 ## Phase 0: Java 25 Toolchain & Pure-Java Simulation Sandbox
 - [x] Scaffold repository (`.gitignore`, `AGENTS.md`, `tasks/todo.md`, Gradle 9.2 wrapper, NeoForge 26.1 ModDevGradle config, hexagonal package shells)
 - [x] Scaffold contributor documentation (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`), architectural invariants (100-day seasonal calendar, resilience equilibrium), and Phase 0-1 Java skeletons
-- [ ] Implement `Household`, `Stockpile`, and Malthusian grain balance in `com.settlement.sim.core.town` (resilience invariant: settlements stall at subsistence rather than extinguishing)
-- [ ] Model 100-day seasonal calendar and crop cycle port (`Season`, `SeasonPort`) in `com.settlement.sim.core.world`
-- [ ] Write JUnit 5 tests in `src/test/java/com/settlement/sim/core/` verifying population stalls below subsistence and grows above surplus threshold, plus HexagonalBoundaryTest
+- [x] Implement `Household`, `Stockpile`, and Malthusian grain balance in `com.settlement.sim.core.town` (resilience invariant: settlements stall at subsistence rather than extinguishing)
+- [x] Model 100-day seasonal calendar and crop cycle port (`Season`, `SeasonPort`) in `com.settlement.sim.core.world`
+- [x] Write JUnit 5 tests in `src/test/java/com/settlement/sim/core/` verifying population stalls below subsistence and grows above surplus threshold, plus HexagonalBoundaryTest
 
 ## Phase 1: World Persistence, Chunk Attachments & Terrain Scanner
 - [ ] Implement `WorldLedgerSavedData` (`SavedDataType` + `Codec`) in `com.settlement.mc.persistence`

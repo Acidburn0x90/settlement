@@ -1,5 +1,7 @@
 package com.settlement.sim.core.town;
 
+import com.settlement.sim.core.SimulationConstants;
+
 import java.util.UUID;
 
 /**
@@ -12,7 +14,7 @@ import java.util.UUID;
  * Pure-Java domain model with zero Minecraft dependencies.
  */
 public class Household {
-    // TODO: Implement domestic grain allocation, consumeShift, and Hybrid Tithe-Pool contribution
+    // TODO: Implement dwelling/plot reference in Phase 3
 
     /** Unique immutable identifier for this household. */
     private final UUID id;
@@ -112,7 +114,7 @@ public class Household {
      */
     public double dependencyRatio() {
         // Cast to double first so Java performs floating-point division instead of truncating
-        return (double) getTotalMembers() / Math.max(1, workers);
+        return (double) getTotalMembers() / Math.max(SimulationConstants.MIN_WORKERS_FOR_RATIO, workers);
     }
 
     /**
@@ -153,46 +155,50 @@ public class Household {
 
     /**
      * Allocates a harvest across domestic seed reserve, domestic subsistence buffer, and
-     * the communal Hybrid Tithe-Pool.
+     * the communal granary surplus pool.
      * <p>
      * Priority order:
      * <ol>
      *   <li>Top up {@code domesticSeed} toward {@code seedTarget}.</li>
      *   <li>Top up {@code domesticCalories} toward {@code subsistenceBuffer}.</li>
-     *   <li>On any remaining excess, tithe {@code Math.round(excess * titheRate)} to the communal {@link Stockpile}
-     *       and retain the rest in {@code domesticCalories}.</li>
+     *   <li>On any remaining excess, contribute {@code Math.round(excess * communalShareRate)}
+     *       to the communal {@link Stockpile} and retain the rest in {@code domesticCalories}.</li>
      * </ol>
      *
      * @param harvest           newly harvested calorie/grain units ({@code >= 0})
-     * @param seedTarget        minimum domestic seed units to hold before tithing ({@code >= 0})
-     * @param subsistenceBuffer minimum domestic calories to hold before tithing ({@code >= 0})
-     * @param titheRate         fraction of surplus contributed to communal {@link Stockpile} ({@code 0.0..1.0})
-     * @return tithe amount to deposit into the communal {@link Stockpile}
-     * @throws IllegalArgumentException if any numeric argument is negative or {@code titheRate} is outside {@code [0.0, 1.0]}
+     * @param seedTarget        minimum domestic seed units to hold before sharing surplus ({@code >= 0})
+     * @param subsistenceBuffer minimum domestic calories to hold before sharing surplus ({@code >= 0})
+     * @param communalShareRate fraction of surplus contributed to communal {@link Stockpile} ({@code 0.0..1.0})
+     * @return communal surplus contribution to deposit into {@link Stockpile}
+     * @throws IllegalArgumentException if any numeric argument is negative or {@code communalShareRate} is outside {@code [0.0, 1.0]}
      */
-    public long receiveHarvestAndTithe(long harvest, long seedTarget, long subsistenceBuffer, double titheRate) {
-        // Guard against negative quantities and non-unit-interval (or NaN) tithe rates
-        if (harvest < 0 || seedTarget < 0 || subsistenceBuffer < 0 || !(titheRate >= 0.0 && titheRate <= 1.0)) {
-            throw new IllegalArgumentException("Arguments must be >= 0 and titheRate within [0.0, 1.0]");
+    public long allocateHarvest(long harvest, long seedTarget, long subsistenceBuffer, double communalShareRate) {
+        // Guard against negative quantities and non-unit-interval (or NaN) share rates
+        if (harvest < SimulationConstants.ZERO_RESERVE
+                || seedTarget < SimulationConstants.ZERO_RESERVE
+                || subsistenceBuffer < SimulationConstants.ZERO_RESERVE
+                || !(communalShareRate >= SimulationConstants.MIN_SURPLUS_SHARE_RATE
+                && communalShareRate <= SimulationConstants.MAX_SURPLUS_SHARE_RATE)) {
+            throw new IllegalArgumentException("Arguments must be >= 0 and communalShareRate within [0.0, 1.0]");
         }
 
         long remaining = harvest;
 
         // 1. Ring-fence seed-corn first so next season's planting is always protected
-        long seedNeeded = Math.max(0L, seedTarget - domesticSeed);
+        long seedNeeded = Math.max(SimulationConstants.ZERO_RESERVE, seedTarget - domesticSeed);
         long toSeed = Math.min(remaining, seedNeeded);
         domesticSeed += toSeed;
         remaining -= toSeed;
 
         // 2. Top up domestic subsistence calories before any surplus is shared
-        long bufferNeeded = Math.max(0L, subsistenceBuffer - domesticCalories);
+        long bufferNeeded = Math.max(SimulationConstants.ZERO_RESERVE, subsistenceBuffer - domesticCalories);
         long toBuffer = Math.min(remaining, bufferNeeded);
         domesticCalories += toBuffer;
         remaining -= toBuffer;
 
-        // 3. Hybrid Tithe-Pool: tithe a fraction of true surplus; keep the rest domestically
-        long tithe = Math.round(remaining * titheRate);
-        domesticCalories += (remaining - tithe);
-        return tithe;
+        // 3. Communal Surplus Share: contribute a fraction of true surplus; keep the rest domestically
+        long communalContribution = Math.round(remaining * communalShareRate);
+        domesticCalories += (remaining - communalContribution);
+        return communalContribution;
     }
 }
