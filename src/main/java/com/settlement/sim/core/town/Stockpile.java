@@ -13,16 +13,48 @@ package com.settlement.sim.core.town;
  */
 public class Stockpile {
 
-    // TODO: Track long calorieUnits, long seedUnits, and long capacity
+    /** Consumable food calories available for rationing, trade, or player withdrawal. */
+    private long calorieUnits;
+
+    /** Ring-fenced seed-corn units reserved strictly for planting (never consumed or raided). */
+    private long seedUnits;
+
+    /** Immutable maximum combined storage capacity ({@code calorieUnits + seedUnits}). */
+    private final long capacity;
 
     /**
      * Creates a communal stockpile with a fixed maximum storage capacity.
      *
      * @param capacity maximum total units ({@code calorieUnits + seedUnits}) the granary can hold; must be {@code >= 0}
+     * @throws IllegalArgumentException if {@code capacity < 0}
      */
     public Stockpile(long capacity) {
-        // TODO: Validate capacity >= 0 and initialize reserves to 0
-        throw new UnsupportedOperationException("TODO");
+        if (capacity < 0) {
+            throw new IllegalArgumentException("Capacity must be >= 0");
+        }
+        this.calorieUnits = 0;
+        this.seedUnits = 0;
+        this.capacity = capacity;
+    }
+
+    /**
+     * Computes the total units currently stored in the granary on demand.
+     * <p>
+     * Derived directly from {@code calorieUnits + seedUnits} so it can never drift out of sync.
+     *
+     * @return combined {@code calorieUnits + seedUnits}
+     */
+    public long getTotalUnits() {
+        return calorieUnits + seedUnits;
+    }
+
+    /**
+     * Computes how many additional units can still fit before reaching {@code capacity}.
+     *
+     * @return remaining free storage capacity ({@code >= 0})
+     */
+    private long remainingCapacity() {
+        return capacity - getTotalUnits();
     }
 
     /**
@@ -33,7 +65,13 @@ public class Stockpile {
      * @throws IllegalArgumentException if {@code amount < 0}
      */
     public long depositCalories(long amount) {
-        throw new UnsupportedOperationException("TODO");
+        if (amount < 0) {
+            throw new IllegalArgumentException("amount must be >= 0");
+        }
+        // Compute accepted amount BEFORE mutating calorieUnits (avoids overflow and stale remaining checks)
+        long accepted = Math.min(amount, remainingCapacity());
+        calorieUnits += accepted;
+        return accepted;
     }
 
     /**
@@ -44,7 +82,13 @@ public class Stockpile {
      * @throws IllegalArgumentException if {@code amount < 0}
      */
     public long depositSeed(long amount) {
-        throw new UnsupportedOperationException("TODO");
+        if (amount < 0) {
+            throw new IllegalArgumentException("amount must be >= 0");
+        }
+        // Clamp against shared capacity without altering calorieUnits
+        long accepted = Math.min(amount, remainingCapacity());
+        seedUnits += accepted;
+        return accepted;
     }
 
     /**
@@ -58,7 +102,13 @@ public class Stockpile {
      * @throws IllegalArgumentException if {@code requested < 0}
      */
     public long withdrawCalories(long requested) {
-        throw new UnsupportedOperationException("TODO");
+        if (requested < 0) {
+            throw new IllegalArgumentException("requested must be >= 0");
+        }
+        // Cap withdrawal to available calorieUnits; never touches ring-fenced seedUnits
+        long withdrawn = Math.min(requested, calorieUnits);
+        calorieUnits -= withdrawn;
+        return withdrawn;
     }
 
     /**
@@ -68,23 +118,35 @@ public class Stockpile {
      * @param caloriesPerShift calorie consumption per citizen per shift ({@code >= 0})
      * @param shiftsBuffer     number of future shifts to cover ({@code >= 0})
      * @return {@code true} if {@code calorieUnits} meets or exceeds the required buffer
+     * @throws IllegalArgumentException if any argument is negative
      */
     public boolean isAboveSubsistence(int population, int caloriesPerShift, int shiftsBuffer) {
-        throw new UnsupportedOperationException("TODO");
+        if (population < 0 || caloriesPerShift < 0 || shiftsBuffer < 0) {
+            throw new IllegalArgumentException("Arguments must be >= 0");
+        }
+        // Cast to long first to prevent 32-bit int overflow on large buffers
+        long required = (long) caloriesPerShift * population * shiftsBuffer;
+        return calorieUnits >= required;
     }
 
-    /** @return current consumable calorie units */
+    /**
+     * @return current consumable calorie units
+     */
     public long getCalorieUnits() {
-        throw new UnsupportedOperationException("TODO");
+        return calorieUnits;
     }
 
-    /** @return current ring-fenced seed-corn units */
+    /**
+     * @return current ring-fenced seed-corn units
+     */
     public long getSeedUnits() {
-        throw new UnsupportedOperationException("TODO");
+        return seedUnits;
     }
 
-    /** @return maximum combined storage capacity */
+    /**
+     * @return maximum combined storage capacity
+     */
     public long getCapacity() {
-        throw new UnsupportedOperationException("TODO");
+        return capacity;
     }
 }
