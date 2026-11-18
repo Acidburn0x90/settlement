@@ -6,11 +6,12 @@ A self-growing, autonomous villager settlement simulation mod for **Minecraft 26
 
 ## Current Status
 
-**Active Phase:** Phase 0 (Toolchain & Pure-Java Simulation Sandbox).  
-Scaffolding and architectural skeletons are in place; domain simulation implementation is in progress.
+**Active Phase:** Phase 0 Complete → Starting Phase 1 (Persistence & Terrain Scanner).  
+Pure-Java `sim.core` calendar, `SettlementStage`, `Stockpile`, `Household`, and `MalthusianBalance` are implemented and verified with JUnit 5.
 
 - [GitHub Milestones](https://github.com/Acidburn0x90/settlement/milestones)
 - [GitHub Issues](https://github.com/Acidburn0x90/settlement/issues)
+- [Flow of Control (Per-Phase Diagrams)](docs/flow-of-control.md)
 - Living Checklist: [tasks/todo.md](tasks/todo.md)
 
 ---
@@ -56,7 +57,7 @@ flowchart TD
 
 | Phase | Description | Key Deliverables | Status |
 |---|---|---|---|
-| **Phase 0** | Java 25 Toolchain & Simulation Sandbox | Pure-Java sandbox, `Household`, `Stockpile`, Malthusian subsistence balance, JUnit 5 suite | **In Progress** |
+| **Phase 0** | Java 25 Toolchain & Simulation Sandbox | Pure-Java sandbox, `SimClock`, `SettlementStage`, `Household`, `Stockpile`, `MalthusianBalance`, JUnit 5 suite | **Complete** |
 | **Phase 1** | Persistence, Soil & Terrain Scanner | `WorldLedgerSavedData`, chunk soil `DataAttachments`, column slope scan, debug wand | **Planned** |
 | **Phase 2** | Flood-Fill, Reservation & Brain Hooks | BFS room flood-fill, `TaskBoard` target reservations, custom `BehaviorControl` in `Villager` `Brain` | **Planned** |
 | **Phase 3** | Burgage Plots & Physical Builder | Burgage plot lifecycle, dynamic soil yield curves, physical block-placing builder with stuck watchdog | **Planned** |
