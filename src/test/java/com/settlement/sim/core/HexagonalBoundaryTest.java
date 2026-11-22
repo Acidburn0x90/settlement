@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class HexagonalBoundaryTest {
 
-    private static final Path SIM_CORE_ROOT = Path.of("src/main/java/com/settlement/sim/core");
+    private static final String SIM_CORE_RELATIVE = "src/main/java/com/settlement/sim/core";
 
     private static final List<String> FORBIDDEN_PREFIXES = List.of(
             "net.minecraft.",
@@ -29,11 +29,12 @@ class HexagonalBoundaryTest {
 
     @Test
     void simCoreMustNotDependOnMinecraftOrNeoForge() throws IOException {
-        assertTrue(Files.isDirectory(SIM_CORE_ROOT), "Missing sim.core directory: " + SIM_CORE_ROOT);
+        Path simCoreRoot = resolveSimCoreRoot();
+        assertTrue(Files.isDirectory(simCoreRoot), "Missing sim.core directory: " + simCoreRoot);
 
         List<String> violations = new ArrayList<>();
 
-        try (Stream<Path> paths = Files.walk(SIM_CORE_ROOT)) {
+        try (Stream<Path> paths = Files.walk(simCoreRoot)) {
             List<Path> javaFiles = paths.filter(p -> p.toString().endsWith(".java")).toList();
             assertTrue(!javaFiles.isEmpty(), "Expected at least one Java file in sim.core");
 
@@ -67,5 +68,18 @@ class HexagonalBoundaryTest {
                 violations.isEmpty(),
                 "Hexagonal boundary violations in com.settlement.sim.core:\n" + String.join("\n", violations)
         );
+    }
+
+    private static Path resolveSimCoreRoot() {
+        // NeoForge unitTest runs with working directory under build/; walk up to repo root
+        Path dir = Path.of("").toAbsolutePath();
+        while (dir != null) {
+            Path candidate = dir.resolve(SIM_CORE_RELATIVE);
+            if (Files.isDirectory(candidate)) {
+                return candidate;
+            }
+            dir = dir.getParent();
+        }
+        return Path.of(SIM_CORE_RELATIVE);
     }
 }
