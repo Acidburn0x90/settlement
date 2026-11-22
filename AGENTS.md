@@ -38,8 +38,9 @@ Primary reference: [Minecraft Settlement Mod Research Roadmap.md](Minecraft%20Se
 - Enforce `sim.core` purity: never leak Minecraft classes into `com.settlement.sim.core`.
 
 ## Collaboration & Agent Role
-- **User-Led Implementation:** The developer writes all domain and mod code themselves.
-- **Agent Role:** Strictly **guidance, architecture review, performance/TPS analysis, and debugging insight**. Do not write non-boilerplate feature code unless the developer explicitly asks.
+- **User-Led Logic & Flow:** The developer writes core domain/gameplay flow and simulation logic themselves.
+- **Agent Role (Guidance + Performance/Security):** Agents handle **guidance, architecture review, debugging insight, and any performance, TPS, overflow, or security hardening** (plus test suites when requested).
+- **Phase-Gate Evaluation:** At the end of every phase (Phases 0–5), run a full `code-reviewer` + security/performance audit before advancing to the next phase.
 - **Research Grounding:** Proactively search and cite established research in game theory, medieval history, sociology, urban morphology, and historical traditions to keep simulation mechanics realistic and grounded in proven methods.
 - **GitHub Workflow:** Work via feature branches (`feat/phase-0-...`), Pull Requests targeting `main`, and GitHub Issues/Milestones.
 
