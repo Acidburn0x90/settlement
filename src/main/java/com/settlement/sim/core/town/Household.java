@@ -83,7 +83,7 @@ public class Household {
      * @return {@code workers + dependents}
      */
     public int getTotalMembers() {
-        return workers + dependents;
+        return Math.addExact(workers, dependents);
     }
 
     /**
@@ -187,18 +187,21 @@ public class Household {
         // 1. Ring-fence seed-corn first so next season's planting is always protected
         long seedNeeded = Math.max(SimulationConstants.ZERO_RESERVE, seedTarget - domesticSeed);
         long toSeed = Math.min(remaining, seedNeeded);
-        domesticSeed += toSeed;
+        long nextSeed = Math.addExact(domesticSeed, toSeed);
         remaining -= toSeed;
 
         // 2. Top up domestic subsistence calories before any surplus is shared
         long bufferNeeded = Math.max(SimulationConstants.ZERO_RESERVE, subsistenceBuffer - domesticCalories);
         long toBuffer = Math.min(remaining, bufferNeeded);
-        domesticCalories += toBuffer;
+        long nextCalories = Math.addExact(domesticCalories, toBuffer);
         remaining -= toBuffer;
 
         // 3. Communal Surplus Share: contribute a fraction of true surplus; clamp to prevent 53-bit double rounding over-deduction
         long communalContribution = Math.clamp(Math.round(remaining * communalShareRate), SimulationConstants.ZERO_RESERVE, remaining);
-        domesticCalories += (remaining - communalContribution);
+        nextCalories = Math.addExact(nextCalories, remaining - communalContribution);
+
+        this.domesticSeed = nextSeed;
+        this.domesticCalories = nextCalories;
         return communalContribution;
     }
 
@@ -207,31 +210,37 @@ public class Household {
      *
      * @param amount non-negative calories returned when the communal {@link Stockpile} is full
      * @throws IllegalArgumentException if {@code amount < 0}
+     * @throws ArithmeticException      if {@code domesticCalories + amount} would overflow {@code Long.MAX_VALUE}
      */
     public void depositDomesticCalories(long amount) {
         if (amount < SimulationConstants.ZERO_RESERVE) {
             throw new IllegalArgumentException("amount must be >= 0");
         }
-        this.domesticCalories += amount;
+        this.domesticCalories = Math.addExact(this.domesticCalories, amount);
     }
 
     /**
      * Adds one new dependent (e.g., child or incoming settler) to this household
      * when settlement surplus supports demographic growth.
+     *
+     * @throws ArithmeticException if {@code dependents} would overflow {@code Integer.MAX_VALUE}
      */
     public void addDependent() {
-        this.dependents += 1;
+        this.dependents = Math.addExact(this.dependents, 1);
     }
 
     /**
      * Promotes one dependent to an active worker (simulating child-to-worker maturation).
      *
      * @return {@code true} if a dependent was promoted; {@code false} if {@code dependents == 0}
+     * @throws ArithmeticException if {@code workers} would overflow {@code Integer.MAX_VALUE}
      */
     public boolean promoteDependentToWorker() {
         if (dependents > 0) {
-            dependents -= 1;
-            workers += 1;
+            // Compute overflow-safe increment before mutating either counter
+            int nextWorkers = Math.addExact(this.workers, 1);
+            this.workers = nextWorkers;
+            this.dependents -= 1;
             return true;
         }
         return false;

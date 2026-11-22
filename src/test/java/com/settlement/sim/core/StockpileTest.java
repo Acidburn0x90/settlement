@@ -61,4 +61,90 @@ class StockpileTest {
         assertThrows(IllegalArgumentException.class, () -> stockpile.depositSeed(-5L));
         assertThrows(IllegalArgumentException.class, () -> stockpile.withdrawCalories(-5L));
     }
+
+    @Test
+    @DisplayName("zero-capacity Stockpile(0L) rejects deposits and enforces subsistence boundaries")
+    void zeroCapacityStockpileRejectsDepositsAndReportsEmpty() {
+        Stockpile zero = new Stockpile(0L);
+
+        assertEquals(0L, zero.getCapacity());
+        assertEquals(0L, zero.getTotalUnits());
+        assertEquals(0L, zero.depositCalories(0L));
+        assertEquals(0L, zero.depositCalories(100L));
+        assertEquals(0L, zero.depositSeed(0L));
+        assertEquals(0L, zero.depositSeed(100L));
+        assertEquals(0L, zero.withdrawCalories(0L));
+        assertEquals(0L, zero.withdrawCalories(100L));
+        assertEquals(0L, zero.getTotalUnits());
+
+        assertTrue(zero.isAboveSubsistence(0, 10, 12));
+        assertTrue(zero.isAboveSubsistence(1, 0, 12));
+        assertTrue(zero.isAboveSubsistence(1, 10, 0));
+        assertFalse(zero.isAboveSubsistence(1, 10, 1));
+    }
+
+    @Test
+    @DisplayName("zero deposits and withdrawals are exact no-ops")
+    void zeroDepositsAndWithdrawalsAreNoOps() {
+        Stockpile stockpile = new Stockpile(100L);
+        stockpile.depositSeed(20L);
+        stockpile.depositCalories(30L);
+
+        assertEquals(0L, stockpile.depositCalories(0L));
+        assertEquals(0L, stockpile.depositSeed(0L));
+        assertEquals(0L, stockpile.withdrawCalories(0L));
+        assertEquals(30L, stockpile.getCalorieUnits());
+        assertEquals(20L, stockpile.getSeedUnits());
+        assertEquals(50L, stockpile.getTotalUnits());
+    }
+
+    @Test
+    @DisplayName("Long.MAX_VALUE capacity handles full deposits and withdrawals without overflow")
+    void longMaxValueCapacityDepositsAndWithdrawalsAvoidOverflow() {
+        Stockpile stockpile = new Stockpile(Long.MAX_VALUE);
+
+        assertEquals(Long.MAX_VALUE, stockpile.depositCalories(Long.MAX_VALUE));
+        assertEquals(Long.MAX_VALUE, stockpile.getCalorieUnits());
+        assertEquals(Long.MAX_VALUE, stockpile.getTotalUnits());
+        assertEquals(0L, stockpile.depositSeed(1L));
+        assertEquals(0L, stockpile.depositCalories(1L));
+
+        assertEquals(Long.MAX_VALUE, stockpile.withdrawCalories(Long.MAX_VALUE));
+        assertEquals(0L, stockpile.getCalorieUnits());
+        assertEquals(Long.MAX_VALUE, stockpile.depositSeed(Long.MAX_VALUE));
+        assertEquals(Long.MAX_VALUE, stockpile.getSeedUnits());
+    }
+
+    @Test
+    @DisplayName("isAboveSubsistence guards against integer and long multiplication wrap-around")
+    void isAboveSubsistenceGuardsAgainstIntegerAndLongOverflow() {
+        Stockpile maxStockpile = new Stockpile(Long.MAX_VALUE);
+        maxStockpile.depositCalories(Long.MAX_VALUE);
+
+        assertFalse(maxStockpile.isAboveSubsistence(Integer.MAX_VALUE, Integer.MAX_VALUE, 3));
+        assertFalse(maxStockpile.isAboveSubsistence(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE));
+        assertFalse(maxStockpile.isAboveSubsistence(Integer.MAX_VALUE, 10, Integer.MAX_VALUE));
+        // (2^31 - 1)^2 * 2 < Long.MAX_VALUE -> exact fit when stockpile holds Long.MAX_VALUE
+        assertTrue(maxStockpile.isAboveSubsistence(Integer.MAX_VALUE, Integer.MAX_VALUE, 2));
+
+        Stockpile empty = new Stockpile(0L);
+        assertTrue(empty.isAboveSubsistence(0, Integer.MAX_VALUE, Integer.MAX_VALUE));
+        assertTrue(empty.isAboveSubsistence(Integer.MAX_VALUE, Integer.MAX_VALUE, 0));
+        assertTrue(empty.isAboveSubsistence(Integer.MAX_VALUE, 0, Integer.MAX_VALUE));
+    }
+
+    @Test
+    @DisplayName("isAboveSubsistence and Long.MIN_VALUE arguments reject negatives")
+    void isAboveSubsistenceAndMinValueNegativeArgumentsRejected() {
+        Stockpile stockpile = new Stockpile(100L);
+
+        assertThrows(IllegalArgumentException.class, () -> stockpile.isAboveSubsistence(-1, 10, 1));
+        assertThrows(IllegalArgumentException.class, () -> stockpile.isAboveSubsistence(1, -1, 1));
+        assertThrows(IllegalArgumentException.class, () -> stockpile.isAboveSubsistence(1, 10, -1));
+        assertThrows(IllegalArgumentException.class, () -> stockpile.isAboveSubsistence(Integer.MIN_VALUE, 10, 1));
+        assertThrows(IllegalArgumentException.class, () -> new Stockpile(Long.MIN_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> stockpile.depositCalories(Long.MIN_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> stockpile.depositSeed(Long.MIN_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> stockpile.withdrawCalories(Long.MIN_VALUE));
+    }
 }

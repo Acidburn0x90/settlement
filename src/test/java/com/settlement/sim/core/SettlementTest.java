@@ -9,6 +9,7 @@ import com.settlement.sim.core.world.SimClock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SettlementTest {
 
@@ -117,5 +119,120 @@ class SettlementTest {
         stockpile.depositSeed(50L);
         stockpile.depositCalories(200L);
         return new Settlement(UUID.nameUUIDFromBytes("town".getBytes()), clock, stockpile, List.of(hh), seed);
+    }
+
+    @Test
+    @DisplayName("constructor rejects null id, clock, stockpile, or households list")
+    void constructorRejectsAllNullRequiredArguments() {
+        UUID id = UUID.randomUUID();
+        SimClock clock = new SimClock();
+        Stockpile stockpile = new Stockpile(100L);
+        List<Household> households = List.of();
+
+        assertThrows(IllegalArgumentException.class, () -> new Settlement(null, clock, stockpile, households, 1L));
+        assertThrows(IllegalArgumentException.class, () -> new Settlement(id, null, stockpile, households, 1L));
+        assertThrows(IllegalArgumentException.class, () -> new Settlement(id, clock, null, households, 1L));
+        assertThrows(IllegalArgumentException.class, () -> new Settlement(id, clock, stockpile, null, 1L));
+    }
+
+    @Test
+    @DisplayName("empty households list initializes at zero population HAMLET and advances without error")
+    void emptyHouseholdsListInitializesAndAdvancesSafely() {
+        Settlement empty = new Settlement(UUID.randomUUID(), new SimClock(), new Stockpile(500L), List.of(), 1L);
+
+        assertEquals(0, empty.getTotalPopulation());
+        assertEquals(SettlementStage.HAMLET, empty.getStage());
+
+        BalanceOutcome zeroCatchUp = empty.catchUpShifts(0L);
+        assertEquals(0, zeroCatchUp.totalPopulation());
+        assertEquals(0, zeroCatchUp.populationDelta());
+        assertTrue(zeroCatchUp.stalledAtSubsistence());
+        assertEquals(SettlementStage.HAMLET, zeroCatchUp.recommendedStage());
+        assertEquals(0L, empty.getClock().getTotalShifts());
+
+        BalanceOutcome singleAdvance = empty.advanceShift();
+        assertEquals(0, singleAdvance.totalPopulation());
+        assertTrue(singleAdvance.stalledAtSubsistence());
+        assertEquals(1L, empty.getClock().getTotalShifts());
+
+        BalanceOutcome catchUp = empty.catchUpShifts(5L);
+        assertEquals(0, catchUp.totalPopulation());
+        assertTrue(catchUp.stalledAtSubsistence());
+        assertEquals(6L, empty.getClock().getTotalShifts());
+    }
+
+    @Test
+    @DisplayName("leastPopulatedHousehold breaks total-member ties by choosing fewest dependents")
+    void leastPopulatedHouseholdBreaksTotalMemberTiesByFewestDependents() {
+        SimClock clock = new SimClock(25L * SimClock.SHIFTS_PER_DAY);
+        Household moreDependents = new Household(UUID.randomUUID(), 2, 2, 500L, 40L); // 4 members, 2 dependents
+        Household fewerDependents = new Household(UUID.randomUUID(), 3, 1, 500L, 40L); // 4 members, 1 dependent
+        Stockpile stockpile = new Stockpile(5000L);
+        stockpile.depositCalories(2000L);
+
+        Settlement settlement = new Settlement(
+                UUID.randomUUID(),
+                clock,
+                stockpile,
+                List.of(moreDependents, fewerDependents),
+                11L
+        );
+        settlement.advanceShift();
+
+        assertEquals(4, moreDependents.getTotalMembers());
+        assertEquals(2, moreDependents.getDependents());
+        assertEquals(5, fewerDependents.getTotalMembers(), "Tie on total members must pick household with fewer dependents");
+        assertEquals(2, fewerDependents.getDependents());
+
+        // Full tie on both totalMembers and dependents retains the earlier household
+        SimClock tieClock = new SimClock(25L * SimClock.SHIFTS_PER_DAY);
+        Household first = new Household(UUID.randomUUID(), 3, 1, 500L, 40L);
+        Household second = new Household(UUID.randomUUID(), 3, 1, 500L, 40L);
+        Stockpile tieStockpile = new Stockpile(5000L);
+        tieStockpile.depositCalories(2000L);
+        Settlement fullTie = new Settlement(UUID.randomUUID(), tieClock, tieStockpile, List.of(first, second), 11L);
+        fullTie.advanceShift();
+
+        assertEquals(5, first.getTotalMembers());
+        assertEquals(4, second.getTotalMembers());
+    }
+
+    @Test
+    @DisplayName("catchUpShifts accepts MAX_CATCHUP_SHIFTS inclusive and rejects Long.MIN_VALUE / Long.MAX_VALUE")
+    void catchUpShiftsAcceptsMaxCatchupShiftsAndRejectsExtremes() {
+        Settlement settlement = createHamlet(42L);
+
+        assertThrows(IllegalArgumentException.class, () -> settlement.catchUpShifts(Long.MIN_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> settlement.catchUpShifts(Long.MAX_VALUE));
+        assertEquals(0L, settlement.getClock().getTotalShifts());
+
+        BalanceOutcome outcome = settlement.catchUpShifts(SimulationConstants.MAX_CATCHUP_SHIFTS);
+        assertEquals(SimulationConstants.MAX_CATCHUP_SHIFTS, settlement.getClock().getTotalShifts());
+        assertTrue(outcome.totalPopulation() >= 4, "Resilience invariant: population never collapses");
+    }
+
+    @Test
+    @DisplayName("constructor defensively copies caller households list")
+    void defensiveCopyProtectsHouseholdsFromCallerListMutation() {
+        Household hh = new Household(UUID.randomUUID(), 2, 1);
+        List<Household> callerList = new ArrayList<>(List.of(hh));
+        Settlement settlement = new Settlement(UUID.randomUUID(), new SimClock(), new Stockpile(100L), callerList, 1L);
+
+        callerList.clear();
+
+        assertEquals(1, settlement.getHouseholds().size());
+        assertEquals(3, settlement.getTotalPopulation());
+    }
+
+    @Test
+    @DisplayName("aggregate population exceeding Integer.MAX_VALUE across households throws ArithmeticException")
+    void aggregatePopulationOverflowAcrossHouseholdsGuarded() {
+        Household h1 = new Household(UUID.randomUUID(), Integer.MAX_VALUE / 2 + 10, 0);
+        Household h2 = new Household(UUID.randomUUID(), Integer.MAX_VALUE / 2 + 10, 0);
+
+        assertThrows(
+                ArithmeticException.class,
+                () -> new Settlement(UUID.randomUUID(), new SimClock(), new Stockpile(100L), List.of(h1, h2), 1L)
+        );
     }
 }

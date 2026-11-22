@@ -1,6 +1,7 @@
 package com.settlement.mc.persistence;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.settlement.mc.SettlementMod;
 import com.settlement.sim.core.town.Household;
@@ -32,24 +33,34 @@ public class WorldLedgerSavedData extends SavedData {
     /** Current on-disk schema version for forward-compatible migrations. */
     public static final long CURRENT_SCHEMA_VERSION = 1L;
 
+    /** Codec constraint rejecting negative {@code int} values cleanly via {@link DataResult#error}. */
+    private static final Codec<Integer> NON_NEGATIVE_INT = Codec.intRange(0, Integer.MAX_VALUE);
+
+    /** Codec constraint rejecting negative {@code long} values cleanly via {@link DataResult#error}. */
+    private static final Codec<Long> NON_NEGATIVE_LONG = Codec.LONG.validate(
+            value -> value >= 0L
+                    ? DataResult.success(value)
+                    : DataResult.error(() -> "Value must be >= 0: " + value)
+    );
+
     /**
      * Codec serializing a single {@link Household} (id, workers, dependents, domestic reserves).
      */
     public static final Codec<Household> HOUSEHOLD_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             UUIDUtil.CODEC.fieldOf("id").forGetter(Household::getId),
-            Codec.INT.fieldOf("workers").forGetter(Household::getWorkers),
-            Codec.INT.fieldOf("dependents").forGetter(Household::getDependents),
-            Codec.LONG.fieldOf("domestic_calories").forGetter(Household::getDomesticCalories),
-            Codec.LONG.fieldOf("domestic_seed").forGetter(Household::getDomesticSeed)
+            NON_NEGATIVE_INT.fieldOf("workers").forGetter(Household::getWorkers),
+            NON_NEGATIVE_INT.fieldOf("dependents").forGetter(Household::getDependents),
+            NON_NEGATIVE_LONG.fieldOf("domestic_calories").forGetter(Household::getDomesticCalories),
+            NON_NEGATIVE_LONG.fieldOf("domestic_seed").forGetter(Household::getDomesticSeed)
     ).apply(instance, Household::new));
 
     /**
      * Codec serializing a {@link Stockpile} (capacity, consumable calories, ring-fenced seed).
      */
     public static final Codec<Stockpile> STOCKPILE_CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.LONG.fieldOf("capacity").forGetter(Stockpile::getCapacity),
-            Codec.LONG.fieldOf("calorie_units").forGetter(Stockpile::getCalorieUnits),
-            Codec.LONG.fieldOf("seed_units").forGetter(Stockpile::getSeedUnits)
+            NON_NEGATIVE_LONG.fieldOf("capacity").forGetter(Stockpile::getCapacity),
+            NON_NEGATIVE_LONG.fieldOf("calorie_units").forGetter(Stockpile::getCalorieUnits),
+            NON_NEGATIVE_LONG.fieldOf("seed_units").forGetter(Stockpile::getSeedUnits)
     ).apply(instance, (capacity, calories, seed) -> {
         Stockpile stockpile = new Stockpile(capacity);
         // Deposit seed first so ring-fenced planting reserves are always restored intact
@@ -63,7 +74,7 @@ public class WorldLedgerSavedData extends SavedData {
      */
     public static final Codec<Settlement> SETTLEMENT_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             UUIDUtil.CODEC.fieldOf("id").forGetter(Settlement::getId),
-            Codec.LONG.fieldOf("total_shifts").forGetter(s -> s.getClock().getTotalShifts()),
+            NON_NEGATIVE_LONG.fieldOf("total_shifts").forGetter(s -> s.getClock().getTotalShifts()),
             STOCKPILE_CODEC.fieldOf("stockpile").forGetter(Settlement::getStockpile),
             HOUSEHOLD_CODEC.listOf().fieldOf("households").forGetter(Settlement::getHouseholds),
             Codec.LONG.fieldOf("seed").forGetter(Settlement::getSeed)

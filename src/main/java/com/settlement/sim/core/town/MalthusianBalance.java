@@ -72,8 +72,11 @@ public final class MalthusianBalance {
 
         for (int i = 0, n = households.size(); i < n; i++) {
             Household household = households.get(i);
+            if (household == null) {
+                throw new IllegalArgumentException("households must not contain null elements");
+            }
             int members = household.getTotalMembers();
-            totalPopulation += members;
+            totalPopulation = Math.addExact(totalPopulation, members);
 
             // 1. Harvest based on active workers, season, and weather (0 during WINTER)
             long harvest = Math.round(
