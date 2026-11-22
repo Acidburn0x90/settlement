@@ -44,3 +44,10 @@ A living scratchpad for gameplay features, buildings, and mechanics, paired with
 
 ## 3. Open Questions & Future Ideas
 - *Add your new ideas below as bullet points or open a GitHub Issue with the `enhancement` label.*
+
+### Pinned-Constraint WFC & In-Place Building Upgrades (Phase 3)
+- **In-Place Upgrades (No Bulldozing):** Model each `Plot` as a 3D modular `PlotGrid`. A pure-Java `BitSet` WFC solver pins intact `FRONTAGE` and load-bearing `DWELLING_CORE` cells while collapsing new upper stories (`ROOF` -> `2F`/`3F`) and rear `ExtensionYard` annexes weighted by `(SettlementStage, BurgageCycle, landValue)`. `BlueprintDiff` diffs old vs. new grids so builders only touch changed blocks.
+- **CLIMAX → FALLOW Plot Replacement & Amalgamation:** When central `landValue` and `SettlementStage` jump, allow WFC to delete/replace (or amalgamate) an entire `CLIMAX` plot into a higher-tier structure (e.g., Guildhall, Inn), guarded by:
+  1. **Sunk-Cost Hysteresis (`>= 1.5x` value gain)** to prevent demolish/rebuild thrashing.
+  2. **Housing Floor Gate** so beds never drop below `currentPopulation`.
+  3. **Top-Down Salvage Pass** reclaiming materials into `Stockpile` before bottom-up construction.
