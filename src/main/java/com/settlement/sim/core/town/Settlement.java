@@ -1,5 +1,7 @@
 package com.settlement.sim.core.town;
 
+import com.settlement.sim.core.SimulationConstants;
+import com.settlement.sim.core.town.MalthusianBalance.BalanceOutcome;
 import com.settlement.sim.core.world.SimClock;
 
 import java.util.ArrayList;
@@ -70,27 +72,79 @@ public class Settlement {
 
     /**
      * Advances the settlement by one 6,000-tick shift:
-     * evaluates {@link MalthusianBalance}, applies positive population growth to a
-     * household when surplus allows, and updates {@link #stage}.
+     * evaluates {@link MalthusianBalance}, distributes positive population growth
+     * evenly across households, and updates {@link #stage}.
      *
-     * @return immutable {@link MalthusianBalance.BalanceOutcome} for this shift
+     * @return immutable {@link BalanceOutcome} for this shift
      */
-    public MalthusianBalance.BalanceOutcome advanceShift() {
-        // TODO: Issue #34 — tick MalthusianBalance, apply populationDelta via addDependent(), update stage
-        throw new UnsupportedOperationException("TODO");
+    public BalanceOutcome advanceShift() {
+        BalanceOutcome outcome = balance.tickShift(clock, households, stockpile, rng);
+
+        // Distribute each new dependent to the smallest household so growth stays balanced
+        if (outcome.populationDelta() > SimulationConstants.STALL_POPULATION_STEP && !households.isEmpty()) {
+            for (int i = 0; i < outcome.populationDelta(); i++) {
+                leastPopulatedHousehold().addDependent();
+            }
+        }
+
+        // Recompute population and Christaller stage after applying growth
+        int updatedPopulation = getTotalPopulation();
+        this.stage = SettlementStage.forPopulation(updatedPopulation);
+
+        return new BalanceOutcome(
+                updatedPopulation,
+                outcome.populationDelta(),
+                outcome.stalledAtSubsistence(),
+                this.stage
+        );
     }
 
     /**
      * Fast-forwards an unloaded or dormant settlement by {@code elapsedShifts}.
      *
      * @param elapsedShifts non-negative number of shifts to simulate
-     * @return {@link MalthusianBalance.BalanceOutcome} after the final catch-up shift,
+     * @return {@link BalanceOutcome} after the final catch-up shift,
      *         or a current-state summary if {@code elapsedShifts == 0}
      * @throws IllegalArgumentException if {@code elapsedShifts < 0}
      */
-    public MalthusianBalance.BalanceOutcome catchUpShifts(long elapsedShifts) {
-        // TODO: Issue #34 — validate elapsedShifts >= 0, loop advanceShift(), handle 0 shifts cleanly
-        throw new UnsupportedOperationException("TODO");
+    public BalanceOutcome catchUpShifts(long elapsedShifts) {
+        if (elapsedShifts < 0L) {
+            throw new IllegalArgumentException("elapsedShifts must be >= 0");
+        }
+        if (elapsedShifts == 0L) {
+            return new BalanceOutcome(
+                    getTotalPopulation(),
+                    SimulationConstants.STALL_POPULATION_STEP,
+                    true,
+                    stage
+            );
+        }
+
+        BalanceOutcome lastOutcome = null;
+        for (long i = 0L; i < elapsedShifts; i++) {
+            lastOutcome = advanceShift();
+        }
+        return lastOutcome;
+    }
+
+    /**
+     * Finds the household with the fewest total members (breaking ties by fewest dependents)
+     * so newly added dependents distribute evenly across the settlement.
+     *
+     * @return least-populated {@link Household}
+     */
+    private Household leastPopulatedHousehold() {
+        Household smallest = households.getFirst();
+        for (int i = 1, n = households.size(); i < n; i++) {
+            Household candidate = households.get(i);
+            int candidateMembers = candidate.getTotalMembers();
+            int smallestMembers = smallest.getTotalMembers();
+            if (candidateMembers < smallestMembers
+                    || (candidateMembers == smallestMembers && candidate.getDependents() < smallest.getDependents())) {
+                smallest = candidate;
+            }
+        }
+        return smallest;
     }
 
     /**

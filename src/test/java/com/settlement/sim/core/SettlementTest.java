@@ -68,6 +68,22 @@ class SettlementTest {
         assertThrows(IllegalArgumentException.class, () -> settlement.catchUpShifts(-1L));
     }
 
+    @Test
+    @DisplayName("advanceShift distributes new dependents evenly to the least-populated household")
+    void advanceShiftDistributesDependentsEvenly() {
+        SimClock clock = new SimClock(25L * SimClock.SHIFTS_PER_DAY);
+        Household larger = new Household(UUID.randomUUID(), 4, 2, 300L, 40L);  // 6 members
+        Household smaller = new Household(UUID.randomUUID(), 2, 0, 300L, 20L); // 2 members
+        Stockpile stockpile = new Stockpile(5000L);
+        stockpile.depositCalories(2000L);
+
+        Settlement settlement = new Settlement(UUID.randomUUID(), clock, stockpile, List.of(larger, smaller), 11L);
+        settlement.advanceShift();
+
+        assertEquals(6, larger.getTotalMembers());
+        assertEquals(3, smaller.getTotalMembers(), "New dependent should go to the smaller household");
+    }
+
     private static Settlement createHamlet(long seed) {
         SimClock clock = new SimClock();
         Household hh = new Household(UUID.nameUUIDFromBytes("founder".getBytes()), 4, 0, 100L, 40L);
