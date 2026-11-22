@@ -61,9 +61,11 @@ public class SimClock implements SeasonPort {
 
     /**
      * Advances the simulation clock by exactly one shift.
+     *
+     * @throws ArithmeticException if {@code totalShifts} would overflow {@code Long.MAX_VALUE}
      */
     public void advanceShift() {
-        this.totalShifts += 1;
+        this.totalShifts = Math.addExact(this.totalShifts, 1L);
     }
 
     /**
@@ -71,12 +73,13 @@ public class SimClock implements SeasonPort {
      *
      * @param count non-negative number of shifts to advance
      * @throws IllegalArgumentException if {@code count < 0}
+     * @throws ArithmeticException      if {@code totalShifts + count} would overflow {@code Long.MAX_VALUE}
      */
     public void advanceShifts(long count) {
         if (count < 0) {
             throw new IllegalArgumentException("count must be >= 0");
         }
-        this.totalShifts += count;
+        this.totalShifts = Math.addExact(this.totalShifts, count);
     }
 
     /**
@@ -117,5 +120,10 @@ public class SimClock implements SeasonPort {
     @Override
     public Season getCurrentSeason() {
         return SEASONS[(getDayOfYear() - 1) / DAYS_PER_SEASON];
+    }
+
+    @Override
+    public int getDaysPerYear() {
+        return DAYS_PER_YEAR;
     }
 }

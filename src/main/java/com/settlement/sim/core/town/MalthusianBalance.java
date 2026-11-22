@@ -5,11 +5,10 @@ import com.settlement.sim.core.world.Season;
 import com.settlement.sim.core.world.SimClock;
 
 import java.util.List;
-import java.util.SplittableRandom;
 
 /**
- * Evaluates one simulation shift of agrarian production, communal surplus sharing,
- * subsistence consumption, and Malthusian growth vs. stall equilibrium.
+ * Stateless domain service evaluating one simulation shift of agrarian production,
+ * communal surplus sharing, subsistence consumption, and Malthusian growth vs. stall equilibrium.
  * <p>
  * <b>Resilience Invariant:</b> Settlements operate on satisficing principles.
  * When grain yields or reserves fall below subsistence thresholds, demographic
@@ -18,7 +17,14 @@ import java.util.SplittableRandom;
  * <p>
  * Pure-Java domain model with zero Minecraft dependencies.
  */
-public class MalthusianBalance {
+public final class MalthusianBalance {
+
+    /** IEEE-754 double unit-interval scale factor (2^-53) for SplitMix64 mixing. */
+    private static final double DOUBLE_UNIT = 0x1.0p-53;
+
+    private MalthusianBalance() {
+        // Stateless utility/service class
+    }
 
     /**
      * Immutable summary of one simulated shift tick.
@@ -33,38 +39,38 @@ public class MalthusianBalance {
             int populationDelta,
             boolean stalledAtSubsistence,
             SettlementStage recommendedStage
-    ) {
-    }
+    ) {}
 
     /**
-     * Advances the settlement economy by one shift using deterministic weather variance.
+     * Advances the settlement economy by one shift using deterministic, stateless
+     * SplitMix64 weather mixing derived from {@code (seed, clock.getTotalShifts())}.
      *
      * @param clock      simulation clock (advanced by 1 shift at the end of the step)
      * @param households list of households belonging to the settlement
      * @param stockpile  communal granary ledger
-     * @param rng        seeded deterministic PRNG for {@code +/-20%} seasonal weather variance
+     * @param seed       settlement PRNG seed (combined with shift index for persistence-safe determinism)
      * @return {@link BalanceOutcome} describing growth vs. subsistence stall and hierarchy stage
-     * @throws IllegalArgumentException if any argument is {@code null}
+     * @throws IllegalArgumentException if {@code clock}, {@code households}, or {@code stockpile} is {@code null}
      */
-    public BalanceOutcome tickShift(
+    public static BalanceOutcome tickShift(
             SimClock clock,
             List<Household> households,
             Stockpile stockpile,
-            SplittableRandom rng
+            long seed
     ) {
-        if (clock == null || households == null || stockpile == null || rng == null) {
-            throw new IllegalArgumentException("clock, households, stockpile, and rng must not be null");
+        if (clock == null || households == null || stockpile == null) {
+            throw new IllegalArgumentException("clock, households, and stockpile must not be null");
         }
 
-        // Seasonal baseline * deterministic +/-20% weather variance for this shift
+        // Deterministic, zero-allocation weather variance derived from (seed, shiftIndex)
         double seasonFactor = seasonalYieldMultiplier(clock.getCurrentSeason());
         double weatherFactor = SimulationConstants.WEATHER_VARIANCE_MIN
-                + SimulationConstants.WEATHER_VARIANCE_SPAN * rng.nextDouble();
+                + SimulationConstants.WEATHER_VARIANCE_SPAN * unitDoubleFromShift(seed, clock.getTotalShifts());
 
         int totalPopulation = 0;
         boolean anyUnmetDeficit = false;
 
-        for (int i = 0; i < households.size(); i++) {
+        for (int i = 0, n = households.size(); i < n; i++) {
             Household household = households.get(i);
             int members = household.getTotalMembers();
             totalPopulation += members;
@@ -88,7 +94,11 @@ public class MalthusianBalance {
                     subsistenceBuffer,
                     SimulationConstants.COMMUNAL_SURPLUS_SHARE
             );
-            stockpile.depositCalories(communalContribution);
+            long accepted = stockpile.depositCalories(communalContribution);
+            if (accepted < communalContribution) {
+                // Conserve overflow calories domestically when the communal granary is at capacity
+                household.depositDomesticCalories(communalContribution - accepted);
+            }
 
             // 3. Consume this shift's calories; draw emergency rations from communal Stockpile on deficit
             long deficit = household.consumeShift(SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT);
@@ -105,10 +115,10 @@ public class MalthusianBalance {
         boolean canGrow = !anyUnmetDeficit
                 && totalPopulation > 0
                 && stockpile.isAboveSubsistence(
-                totalPopulation,
-                SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT,
-                SimulationConstants.GROWTH_BUFFER_SHIFTS
-        );
+                        totalPopulation,
+                        SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT,
+                        SimulationConstants.GROWTH_BUFFER_SHIFTS
+                );
         int populationDelta = canGrow
                 ? SimulationConstants.GROWTH_POPULATION_STEP
                 : SimulationConstants.STALL_POPULATION_STEP;
@@ -142,5 +152,17 @@ public class MalthusianBalance {
             case AUTUMN -> SimulationConstants.AUTUMN_YIELD_MULTIPLIER;
             case WINTER -> SimulationConstants.WINTER_YIELD_MULTIPLIER;
         };
+    }
+
+    /**
+     * Pure SplitMix64 hash producing a deterministic uniform double in {@code [0.0, 1.0)}
+     * with zero heap allocations and no mutable PRNG state to serialize.
+     */
+    private static double unitDoubleFromShift(long seed, long shiftIndex) {
+        long z = seed + shiftIndex * 0x9E3779B97F4A7C15L;
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        z = z ^ (z >>> 31);
+        return (z >>> 11) * DOUBLE_UNIT;
     }
 }

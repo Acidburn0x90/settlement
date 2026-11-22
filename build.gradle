@@ -63,7 +63,7 @@ neoForge {
 sourceSets.main.resources {
     srcDir('src/generated/resources')
     exclude("**/*.bbmodel")
-    exclude("src/generated/**/.cache")
+    exclude("**/.cache/**")
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

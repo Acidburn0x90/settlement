@@ -23,6 +23,9 @@ public enum SettlementStage {
     /** Regional capital anchoring inter-town trade (150+ citizens): 50% trade discount, 2.00x XP. */
     REGION(150, 0.50, 2.00);
 
+    /** Cached enum values to avoid array allocation on every stage lookup. */
+    private static final SettlementStage[] STAGES = values();
+
     /** Minimum citizen count required to reach this stage. */
     private final int minPopulation;
 
@@ -85,10 +88,9 @@ public enum SettlementStage {
         }
 
         // Scan from highest stage (REGION) downward to match the highest met threshold first
-        SettlementStage[] stages = values();
-        for (int i = stages.length - 1; i >= 0; i--) {
-            if (population >= stages[i].minPopulation) {
-                return stages[i];
+        for (int i = STAGES.length - 1; i >= 0; i--) {
+            if (population >= STAGES[i].minPopulation) {
+                return STAGES[i];
             }
         }
         return HAMLET;

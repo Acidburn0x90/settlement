@@ -196,10 +196,23 @@ public class Household {
         domesticCalories += toBuffer;
         remaining -= toBuffer;
 
-        // 3. Communal Surplus Share: contribute a fraction of true surplus; keep the rest domestically
-        long communalContribution = Math.round(remaining * communalShareRate);
+        // 3. Communal Surplus Share: contribute a fraction of true surplus; clamp to prevent 53-bit double rounding over-deduction
+        long communalContribution = Math.clamp(Math.round(remaining * communalShareRate), SimulationConstants.ZERO_RESERVE, remaining);
         domesticCalories += (remaining - communalContribution);
         return communalContribution;
+    }
+
+    /**
+     * Credits unaccepted communal overflow calories back to this household's domestic reserves.
+     *
+     * @param amount non-negative calories returned when the communal {@link Stockpile} is full
+     * @throws IllegalArgumentException if {@code amount < 0}
+     */
+    public void depositDomesticCalories(long amount) {
+        if (amount < SimulationConstants.ZERO_RESERVE) {
+            throw new IllegalArgumentException("amount must be >= 0");
+        }
+        this.domesticCalories += amount;
     }
 
     /**

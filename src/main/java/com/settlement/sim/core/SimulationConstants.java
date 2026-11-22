@@ -93,4 +93,7 @@ public final class SimulationConstants {
 
     /** Population delta emitted when the settlement stalls at subsistence equilibrium. */
     public static final int STALL_POPULATION_STEP = 0;
+
+    /** Safety cap on catch-up shifts per call (100 simulated years) to protect the server thread. */
+    public static final long MAX_CATCHUP_SHIFTS = 40_000L;
 }
