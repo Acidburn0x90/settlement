@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.SplittableRandom;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,8 +32,7 @@ class MalthusianBalanceTest {
         stockpile.depositSeed(50L);
         stockpile.depositCalories(10L); // Less than 30 needed for 3 members
 
-        MalthusianBalance balance = new MalthusianBalance();
-        BalanceOutcome outcome = balance.tickShift(clock, List.of(hh), stockpile, new SplittableRandom(42L));
+        BalanceOutcome outcome = MalthusianBalance.tickShift(clock, List.of(hh), stockpile, 42L);
 
         assertEquals(3, outcome.totalPopulation());
         assertEquals(0, outcome.populationDelta(), "Villages must stall, never collapse below 0 delta");
@@ -57,17 +55,32 @@ class MalthusianBalanceTest {
         Stockpile stockpile = new Stockpile(2000L);
         stockpile.depositCalories(500L); // Above GROWTH_BUFFER_SHIFTS (4 * 10 * 12 = 480)
 
-        MalthusianBalance balance = new MalthusianBalance();
-        BalanceOutcome outcome = balance.tickShift(clock, List.of(hh), stockpile, new SplittableRandom(99L));
+        BalanceOutcome outcome = MalthusianBalance.tickShift(clock, List.of(hh), stockpile, 99L);
 
         assertEquals(4, outcome.totalPopulation());
         assertTrue(outcome.populationDelta() > 0);
         assertFalse(outcome.stalledAtSubsistence());
-        assertTrue(stockpile.getCalorieUnits() > 500L, "Surplus tithe should grow communal stockpile");
+        assertTrue(stockpile.getCalorieUnits() > 500L, "Surplus share should grow communal stockpile");
     }
 
     @Test
-    @DisplayName("400-shift (1 full year) simulation is bit-identical for identical PRNG seeds")
+    @DisplayName("full communal stockpile returns surplus overflow to household instead of destroying calories")
+    void fullStockpileReturnsOverflowToHousehold() {
+        SimClock clock = new SimClock(25L * SimClock.SHIFTS_PER_DAY);
+        Household hh = new Household(UUID.randomUUID(), 4, 0, 200L, 40L);
+        Stockpile fullStockpile = new Stockpile(100L);
+        fullStockpile.depositCalories(100L); // Already 100% full
+
+        long beforeDomestic = hh.getDomesticCalories();
+        MalthusianBalance.tickShift(clock, List.of(hh), fullStockpile, 7L);
+
+        assertEquals(100L, fullStockpile.getCalorieUnits());
+        // Household produced > 40 needed for consumption and kept 100% of surplus because granary was full
+        assertTrue(hh.getDomesticCalories() > beforeDomestic);
+    }
+
+    @Test
+    @DisplayName("400-shift (1 full year) simulation is bit-identical for identical seeds")
     void fullYearRunIsDeterministicForSameSeed() {
         Stockpile run1 = simulateOneYear(123456789L);
         Stockpile run2 = simulateOneYear(123456789L);
@@ -79,16 +92,14 @@ class MalthusianBalanceTest {
     @Test
     @DisplayName("null arguments throw IllegalArgumentException")
     void nullArgumentsRejected() {
-        MalthusianBalance balance = new MalthusianBalance();
         SimClock clock = new SimClock();
         List<Household> households = List.of();
         Stockpile stockpile = new Stockpile(100L);
-        SplittableRandom rng = new SplittableRandom(1L);
 
-        assertThrows(IllegalArgumentException.class, () -> balance.tickShift(null, households, stockpile, rng));
-        assertThrows(IllegalArgumentException.class, () -> balance.tickShift(clock, null, stockpile, rng));
-        assertThrows(IllegalArgumentException.class, () -> balance.tickShift(clock, households, null, rng));
-        assertThrows(IllegalArgumentException.class, () -> balance.tickShift(clock, households, stockpile, null));
+        assertThrows(IllegalArgumentException.class, () -> MalthusianBalance.tickShift(null, households, stockpile, 1L));
+        assertThrows(IllegalArgumentException.class, () -> MalthusianBalance.tickShift(clock, null, stockpile, 1L));
+        assertThrows(IllegalArgumentException.class, () -> MalthusianBalance.tickShift(clock, households, null, 1L));
+        assertThrows(IllegalArgumentException.class, () -> MalthusianBalance.seasonalYieldMultiplier(null));
     }
 
     private static Stockpile simulateOneYear(long seed) {
@@ -101,10 +112,8 @@ class MalthusianBalanceTest {
         stockpile.depositSeed(100L);
         stockpile.depositCalories(200L);
 
-        MalthusianBalance balance = new MalthusianBalance();
-        SplittableRandom rng = new SplittableRandom(seed);
         for (int i = 0; i < 400; i++) {
-            balance.tickShift(clock, households, stockpile, rng);
+            MalthusianBalance.tickShift(clock, households, stockpile, seed);
         }
         return stockpile;
     }

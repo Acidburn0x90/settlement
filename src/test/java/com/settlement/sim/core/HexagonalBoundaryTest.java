@@ -1,6 +1,5 @@
 package com.settlement.sim.core;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -13,46 +12,60 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Architectural fitness test enforcing the Hexagonal Boundary rule:
- * Pure simulation core classes in {@code com.settlement.sim.core.*} must never
- * depend on Minecraft or NeoForge engine classes.
+ * Architectural fitness test enforcing the strict hexagonal boundary:
+ * {@code com.settlement.sim.core.*} must remain pure Java with zero imports
+ * or inline references to Minecraft, Mojang, NeoForge, or {@code com.settlement.mc.*}.
  */
 class HexagonalBoundaryTest {
 
-    private static final String FORBIDDEN_MINECRAFT = "import net.minecraft.";
-    private static final String FORBIDDEN_NEOFORGED = "import net.neoforged.";
+    private static final Path SIM_CORE_ROOT = Path.of("src/main/java/com/settlement/sim/core");
+
+    private static final List<String> FORBIDDEN_PREFIXES = List.of(
+            "net.minecraft.",
+            "net.neoforged.",
+            "com.mojang.",
+            "com.settlement.mc."
+    );
 
     @Test
-    @DisplayName("Verify com.settlement.sim.core contains zero Minecraft or NeoForge imports")
-    void testHexagonalBoundaryPurity() throws IOException {
-        Path coreDir = Path.of("src/main/java/com/settlement/sim/core");
-        assertTrue(Files.exists(coreDir), "Core directory must exist: " + coreDir);
+    void simCoreMustNotDependOnMinecraftOrNeoForge() throws IOException {
+        assertTrue(Files.isDirectory(SIM_CORE_ROOT), "Missing sim.core directory: " + SIM_CORE_ROOT);
 
         List<String> violations = new ArrayList<>();
-        int scannedFiles = 0;
 
-        try (Stream<Path> stream = Files.walk(coreDir)) {
-            List<Path> javaFiles = stream
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .toList();
+        try (Stream<Path> paths = Files.walk(SIM_CORE_ROOT)) {
+            List<Path> javaFiles = paths.filter(p -> p.toString().endsWith(".java")).toList();
+            assertTrue(!javaFiles.isEmpty(), "Expected at least one Java file in sim.core");
 
-            scannedFiles = javaFiles.size();
-
-            for (Path javaFile : javaFiles) {
-                List<String> lines = Files.readAllLines(javaFile);
+            for (Path file : javaFiles) {
+                List<String> lines = Files.readAllLines(file);
+                boolean inBlockComment = false;
                 for (int i = 0; i < lines.size(); i++) {
-                    String line = lines.get(i).trim();
-                    if (line.startsWith(FORBIDDEN_MINECRAFT) || line.startsWith("import static net.minecraft.")
-                            || line.startsWith(FORBIDDEN_NEOFORGED) || line.startsWith("import static net.neoforged.")) {
-                        violations.add(String.format("%s:%d -> %s", javaFile, i + 1, line));
+                    String trimmed = lines.get(i).trim();
+                    if (trimmed.startsWith("/*")) {
+                        inBlockComment = true;
+                    }
+                    if (inBlockComment) {
+                        if (trimmed.contains("*/")) {
+                            inBlockComment = false;
+                        }
+                        continue;
+                    }
+                    if (trimmed.startsWith("//") || trimmed.startsWith("*")) {
+                        continue;
+                    }
+                    for (String prefix : FORBIDDEN_PREFIXES) {
+                        if (trimmed.contains(prefix)) {
+                            violations.add(file + ":" + (i + 1) + " -> " + trimmed);
+                        }
                     }
                 }
             }
         }
 
-        assertTrue(scannedFiles > 0, "Expected at least one Java file in sim.core, found 0");
-        assertTrue(violations.isEmpty(),
-                () -> "Hexagonal boundary violations found in sim.core:\n" + String.join("\n", violations));
+        assertTrue(
+                violations.isEmpty(),
+                "Hexagonal boundary violations in com.settlement.sim.core:\n" + String.join("\n", violations)
+        );
     }
 }

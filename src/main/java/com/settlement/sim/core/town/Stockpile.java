@@ -126,9 +126,14 @@ public class Stockpile {
         if (population < 0 || caloriesPerShift < 0 || shiftsBuffer < 0) {
             throw new IllegalArgumentException("Arguments must be >= 0");
         }
-        // Cast to long first to prevent 32-bit int overflow on large buffers
-        long required = (long) caloriesPerShift * population * shiftsBuffer;
-        return calorieUnits >= required;
+        try {
+            // Use multiplyExact so huge buffers never wrap negative and falsely return true
+            long perShift = Math.multiplyExact((long) caloriesPerShift, population);
+            long required = Math.multiplyExact(perShift, shiftsBuffer);
+            return calorieUnits >= required;
+        } catch (ArithmeticException overflow) {
+            return false;
+        }
     }
 
     /**

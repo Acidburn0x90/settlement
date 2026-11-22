@@ -7,16 +7,16 @@ import com.settlement.sim.core.world.SimClock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.SplittableRandom;
 import java.util.UUID;
 
 /**
  * Tier 3 aggregate root representing a single autonomous settlement.
  * <p>
  * Owns the settlement's {@link SimClock}, communal {@link Stockpile}, constituent
- * {@link Household} units, deterministic {@link SplittableRandom} stream, and
- * {@link SettlementStage}. Executing {@link #advanceShift()} or {@link #catchUpShifts(long)}
- * closes the autonomous Malthusian growth loop without any Minecraft dependencies.
+ * {@link Household} units, deterministic {@code seed}, and {@link SettlementStage}.
+ * Executing {@link #advanceShift()} or {@link #catchUpShifts(long)} closes the
+ * autonomous Malthusian growth loop without any Minecraft dependencies or
+ * unserializable PRNG state.
  */
 public class Settlement {
 
@@ -32,11 +32,8 @@ public class Settlement {
     /** Mutable list of constituent households belonging to this settlement. */
     private final List<Household> households;
 
-    /** Economic/demographic evaluator applied on each shift tick. */
-    private final MalthusianBalance balance;
-
-    /** Seeded PRNG ensuring deterministic weather variance and catch-up parity. */
-    private final SplittableRandom rng;
+    /** Persistence-safe PRNG seed for deterministic weather variance across reloads. */
+    private final long seed;
 
     /** Current Christaller hierarchy stage derived from total population. */
     private SettlementStage stage;
@@ -47,9 +44,9 @@ public class Settlement {
      * @param id         unique non-null settlement identifier
      * @param clock      simulation clock (must not be {@code null})
      * @param stockpile  communal granary ledger (must not be {@code null})
-     * @param households initial households (must not be {@code null})
+     * @param households initial households (must not be {@code null} or contain {@code null} elements)
      * @param seed       deterministic PRNG seed for weather variance
-     * @throws IllegalArgumentException if any required object argument is {@code null}
+     * @throws IllegalArgumentException if any required object or household element is {@code null}
      */
     public Settlement(
             UUID id,
@@ -61,12 +58,16 @@ public class Settlement {
         if (id == null || clock == null || stockpile == null || households == null) {
             throw new IllegalArgumentException("id, clock, stockpile, and households must not be null");
         }
+        for (int i = 0, n = households.size(); i < n; i++) {
+            if (households.get(i) == null) {
+                throw new IllegalArgumentException("households must not contain null elements");
+            }
+        }
         this.id = id;
         this.clock = clock;
         this.stockpile = stockpile;
         this.households = new ArrayList<>(households);
-        this.balance = new MalthusianBalance();
-        this.rng = new SplittableRandom(seed);
+        this.seed = seed;
         this.stage = SettlementStage.forPopulation(getTotalPopulation());
     }
 
@@ -78,46 +79,50 @@ public class Settlement {
      * @return immutable {@link BalanceOutcome} for this shift
      */
     public BalanceOutcome advanceShift() {
-        BalanceOutcome outcome = balance.tickShift(clock, households, stockpile, rng);
+        BalanceOutcome outcome = MalthusianBalance.tickShift(clock, households, stockpile, seed);
 
         // Distribute each new dependent to the smallest household so growth stays balanced
         if (outcome.populationDelta() > SimulationConstants.STALL_POPULATION_STEP && !households.isEmpty()) {
             for (int i = 0; i < outcome.populationDelta(); i++) {
                 leastPopulatedHousehold().addDependent();
             }
+            // Recompute population and stage only when population actually changed
+            int updatedPopulation = getTotalPopulation();
+            this.stage = SettlementStage.forPopulation(updatedPopulation);
+            return new BalanceOutcome(
+                    updatedPopulation,
+                    outcome.populationDelta(),
+                    outcome.stalledAtSubsistence(),
+                    this.stage
+            );
         }
 
-        // Recompute population and Christaller stage after applying growth
-        int updatedPopulation = getTotalPopulation();
-        this.stage = SettlementStage.forPopulation(updatedPopulation);
-
-        return new BalanceOutcome(
-                updatedPopulation,
-                outcome.populationDelta(),
-                outcome.stalledAtSubsistence(),
-                this.stage
-        );
+        this.stage = outcome.recommendedStage();
+        return outcome;
     }
 
     /**
      * Fast-forwards an unloaded or dormant settlement by {@code elapsedShifts}.
      *
-     * @param elapsedShifts non-negative number of shifts to simulate
+     * @param elapsedShifts number of shifts to simulate ({@code 0 <= elapsedShifts <= MAX_CATCHUP_SHIFTS})
      * @return {@link BalanceOutcome} after the final catch-up shift,
-     *         or a current-state summary if {@code elapsedShifts == 0}
-     * @throws IllegalArgumentException if {@code elapsedShifts < 0}
+     *         or an accurate current-state summary if {@code elapsedShifts == 0}
+     * @throws IllegalArgumentException if {@code elapsedShifts < 0} or exceeds {@link SimulationConstants#MAX_CATCHUP_SHIFTS}
      */
     public BalanceOutcome catchUpShifts(long elapsedShifts) {
-        if (elapsedShifts < 0L) {
-            throw new IllegalArgumentException("elapsedShifts must be >= 0");
+        if (elapsedShifts < 0L || elapsedShifts > SimulationConstants.MAX_CATCHUP_SHIFTS) {
+            throw new IllegalArgumentException(
+                    "elapsedShifts must be within [0, " + SimulationConstants.MAX_CATCHUP_SHIFTS + "]"
+            );
         }
         if (elapsedShifts == 0L) {
-            return new BalanceOutcome(
-                    getTotalPopulation(),
-                    SimulationConstants.STALL_POPULATION_STEP,
-                    true,
-                    stage
+            int pop = getTotalPopulation();
+            boolean stalled = pop == 0 || !stockpile.isAboveSubsistence(
+                    pop,
+                    SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT,
+                    SimulationConstants.GROWTH_BUFFER_SHIFTS
             );
+            return new BalanceOutcome(pop, SimulationConstants.STALL_POPULATION_STEP, stalled, stage);
         }
 
         BalanceOutcome lastOutcome = null;
@@ -134,7 +139,7 @@ public class Settlement {
      * @return least-populated {@link Household}
      */
     private Household leastPopulatedHousehold() {
-        Household smallest = households.getFirst();
+        Household smallest = households.get(0);
         for (int i = 1, n = households.size(); i < n; i++) {
             Household candidate = households.get(i);
             int candidateMembers = candidate.getTotalMembers();
@@ -163,6 +168,11 @@ public class Settlement {
     /** @return unique settlement identifier */
     public UUID getId() {
         return id;
+    }
+
+    /** @return persistence-safe PRNG seed */
+    public long getSeed() {
+        return seed;
     }
 
     /** @return current Christaller hierarchy stage */

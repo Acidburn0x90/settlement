@@ -9,12 +9,13 @@ import com.settlement.sim.core.world.SimClock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SettlementTest {
 
@@ -56,16 +57,25 @@ class SettlementTest {
     }
 
     @Test
-    @DisplayName("catchUpShifts(0) does not advance clock and negative shifts throw IllegalArgumentException")
-    void catchUpZeroAndNegativeRejected() {
+    @DisplayName("catchUpShifts(0) reports accurate subsistence state without advancing clock, and out-of-range throws")
+    void catchUpZeroAndBoundsChecked() {
         Settlement settlement = createHamlet(1L);
-
-        BalanceOutcome outcome = settlement.catchUpShifts(0L);
+        // createHamlet starts with 4 members and 200 calories (< 480 required for 12-shift buffer -> stalled)
+        BalanceOutcome stalledOutcome = settlement.catchUpShifts(0L);
         assertEquals(0L, settlement.getClock().getTotalShifts());
-        assertEquals(settlement.getTotalPopulation(), outcome.totalPopulation());
-        assertTrue(outcome.stalledAtSubsistence() || outcome.populationDelta() == 0);
+        assertEquals(settlement.getTotalPopulation(), stalledOutcome.totalPopulation());
+        assertEquals(true, stalledOutcome.stalledAtSubsistence());
+
+        // Top up stockpile above 480 -> catchUpShifts(0L) must report not stalled
+        settlement.getStockpile().depositCalories(400L);
+        BalanceOutcome surplusOutcome = settlement.catchUpShifts(0L);
+        assertFalse(surplusOutcome.stalledAtSubsistence());
 
         assertThrows(IllegalArgumentException.class, () -> settlement.catchUpShifts(-1L));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> settlement.catchUpShifts(SimulationConstants.MAX_CATCHUP_SHIFTS + 1L)
+        );
     }
 
     @Test
@@ -82,6 +92,22 @@ class SettlementTest {
 
         assertEquals(6, larger.getTotalMembers());
         assertEquals(3, smaller.getTotalMembers(), "New dependent should go to the smaller household");
+    }
+
+    @Test
+    @DisplayName("constructor rejects null household elements and getHouseholds is unmodifiable")
+    void rejectsNullHouseholdElementsAndProtectsList() {
+        SimClock clock = new SimClock();
+        Stockpile stockpile = new Stockpile(100L);
+        List<Household> withNull = Arrays.asList((Household) null);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new Settlement(UUID.randomUUID(), clock, stockpile, withNull, 1L)
+        );
+
+        Settlement settlement = createHamlet(5L);
+        assertThrows(UnsupportedOperationException.class, () -> settlement.getHouseholds().clear());
     }
 
     private static Settlement createHamlet(long seed) {
