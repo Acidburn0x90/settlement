@@ -12,6 +12,7 @@ Pure-Java `sim.core` calendar, `SettlementStage`, `Stockpile`, `Household`, and 
 - [GitHub Milestones](https://github.com/Acidburn0x90/settlement/milestones)
 - [GitHub Issues](https://github.com/Acidburn0x90/settlement/issues)
 - [Flow of Control (Per-Phase Diagrams)](docs/flow-of-control.md)
+- [Naming Scheme & Object Relationships](docs/naming-and-architecture.md)
 - Living Checklist: [tasks/todo.md](tasks/todo.md)
 
 ---
