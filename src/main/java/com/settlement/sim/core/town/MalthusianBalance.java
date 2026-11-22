@@ -33,7 +33,8 @@ public class MalthusianBalance {
             int populationDelta,
             boolean stalledAtSubsistence,
             SettlementStage recommendedStage
-    ) {}
+    ) {
+    }
 
     /**
      * Advances the settlement economy by one shift using deterministic weather variance.
@@ -63,7 +64,8 @@ public class MalthusianBalance {
         int totalPopulation = 0;
         boolean anyUnmetDeficit = false;
 
-        for (Household household : households) {
+        for (int i = 0; i < households.size(); i++) {
+            Household household = households.get(i);
             int members = household.getTotalMembers();
             totalPopulation += members;
 
@@ -103,10 +105,10 @@ public class MalthusianBalance {
         boolean canGrow = !anyUnmetDeficit
                 && totalPopulation > 0
                 && stockpile.isAboveSubsistence(
-                        totalPopulation,
-                        SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT,
-                        SimulationConstants.GROWTH_BUFFER_SHIFTS
-                );
+                totalPopulation,
+                SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT,
+                SimulationConstants.GROWTH_BUFFER_SHIFTS
+        );
         int populationDelta = canGrow
                 ? SimulationConstants.GROWTH_POPULATION_STEP
                 : SimulationConstants.STALL_POPULATION_STEP;
