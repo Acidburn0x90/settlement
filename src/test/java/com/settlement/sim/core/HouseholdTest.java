@@ -116,4 +116,41 @@ class HouseholdTest {
         assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(10L, 0L, 0L, -0.1));
         assertThrows(IllegalArgumentException.class, () -> hh.allocateHarvest(10L, 0L, 0L, 1.1));
     }
+
+    @Test
+    @DisplayName("addDependent increments dependents and totalMembers")
+    void addDependentIncrementsDependentsAndTotalMembers() {
+        Household hh = new Household(UUID.randomUUID(), 2, 0);
+
+        hh.addDependent();
+
+        assertEquals(1, hh.getDependents());
+        assertEquals(2, hh.getWorkers());
+        assertEquals(3, hh.getTotalMembers());
+    }
+
+    @Test
+    @DisplayName("promoteDependentToWorker moves one dependent into workers when available")
+    void promoteDependentToWorkerMovesDependentToWorkerWhenAvailable() {
+        Household hh = new Household(UUID.randomUUID(), 1, 2);
+
+        boolean promoted = hh.promoteDependentToWorker();
+
+        assertEquals(true, promoted);
+        assertEquals(2, hh.getWorkers());
+        assertEquals(1, hh.getDependents());
+        assertEquals(3, hh.getTotalMembers());
+    }
+
+    @Test
+    @DisplayName("promoteDependentToWorker returns false without altering counts when dependents == 0")
+    void promoteDependentToWorkerReturnsFalseWhenNoDependentsExist() {
+        Household hh = new Household(UUID.randomUUID(), 2, 0);
+
+        boolean promoted = hh.promoteDependentToWorker();
+
+        assertEquals(false, promoted);
+        assertEquals(2, hh.getWorkers());
+        assertEquals(0, hh.getDependents());
+    }
 }
