@@ -201,4 +201,26 @@ public class Household {
         domesticCalories += (remaining - communalContribution);
         return communalContribution;
     }
+
+    /**
+     * Adds one new dependent (e.g., child or incoming settler) to this household
+     * when settlement surplus supports demographic growth.
+     */
+    public void addDependent() {
+        this.dependents += 1;
+    }
+
+    /**
+     * Promotes one dependent to an active worker (simulating child-to-worker maturation).
+     *
+     * @return {@code true} if a dependent was promoted; {@code false} if {@code dependents == 0}
+     */
+    public boolean promoteDependentToWorker() {
+        if (dependents > 0) {
+            dependents -= 1;
+            workers += 1;
+            return true;
+        }
+        return false;
+    }
 }
