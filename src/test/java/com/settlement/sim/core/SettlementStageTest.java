@@ -53,4 +53,25 @@ class SettlementStageTest {
 
         assertThrows(IllegalArgumentException.class, () -> SettlementStage.forPopulation(-1));
     }
+
+    @Test
+    @DisplayName("forPopulation resolves minPopulation - 1 upper boundaries cleanly across all stages")
+    void forPopulationResolvesMinPopulationMinusOneBoundaries() {
+        assertEquals(SettlementStage.HAMLET, SettlementStage.forPopulation(0));
+        assertEquals(SettlementStage.HAMLET, SettlementStage.forPopulation(15));
+        assertEquals(SettlementStage.VILLAGE, SettlementStage.forPopulation(16));
+        assertEquals(SettlementStage.VILLAGE, SettlementStage.forPopulation(34));
+        assertEquals(SettlementStage.TOWN, SettlementStage.forPopulation(35));
+        assertEquals(SettlementStage.TOWN, SettlementStage.forPopulation(79));
+        assertEquals(SettlementStage.CITY, SettlementStage.forPopulation(80));
+        assertEquals(SettlementStage.CITY, SettlementStage.forPopulation(149));
+        assertEquals(SettlementStage.REGION, SettlementStage.forPopulation(150));
+    }
+
+    @Test
+    @DisplayName("forPopulation resolves Integer.MAX_VALUE to REGION and rejects Integer.MIN_VALUE")
+    void forPopulationHandlesIntegerMaxValueAndRejectsMinValue() {
+        assertEquals(SettlementStage.REGION, SettlementStage.forPopulation(Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> SettlementStage.forPopulation(Integer.MIN_VALUE));
+    }
 }

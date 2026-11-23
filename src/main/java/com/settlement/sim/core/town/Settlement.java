@@ -160,7 +160,7 @@ public class Settlement {
     public int getTotalPopulation() {
         int total = 0;
         for (int i = 0, n = households.size(); i < n; i++) {
-            total += households.get(i).getTotalMembers();
+            total = Math.addExact(total, households.get(i).getTotalMembers());
         }
         return total;
     }

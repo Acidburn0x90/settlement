@@ -1,13 +1,16 @@
 package com.settlement.sim.core;
 
 import com.settlement.sim.core.world.Season;
+import com.settlement.sim.core.world.SeasonPort;
 import com.settlement.sim.core.world.SimClock;
 import com.settlement.sim.core.world.SimClock.Shift;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SimClockTest {
 
@@ -98,5 +101,93 @@ class SimClockTest {
 
         SimClock clock = new SimClock();
         assertThrows(IllegalArgumentException.class, () -> clock.advanceShifts(-1L));
+    }
+
+    @Test
+    @DisplayName("advanceShifts(0L) leaves clock state completely unchanged")
+    void advanceShiftsZeroLeavesClockUnchanged() {
+        SimClock clock = new SimClock(17L);
+        Shift beforeShift = clock.getCurrentShift();
+        int beforeDay = clock.getDayOfYear();
+        Season beforeSeason = clock.getCurrentSeason();
+
+        clock.advanceShifts(0L);
+
+        assertEquals(17L, clock.getTotalShifts());
+        assertEquals(beforeShift, clock.getCurrentShift());
+        assertEquals(beforeDay, clock.getDayOfYear());
+        assertEquals(beforeSeason, clock.getCurrentSeason());
+    }
+
+    @Test
+    @DisplayName("advanceShift and advanceShifts guard Long.MAX_VALUE overflow with ArithmeticException")
+    void advanceShiftAndAdvanceShiftsGuardLongMaxValueOverflow() {
+        SimClock atMax = new SimClock(Long.MAX_VALUE);
+
+        assertEquals(Shift.NIGHT, atMax.getCurrentShift());
+        assertTrue(atMax.getDayOfYear() >= 1 && atMax.getDayOfYear() <= 100);
+        assertNotNull(atMax.getCurrentSeason());
+
+        atMax.advanceShifts(0L);
+        assertEquals(Long.MAX_VALUE, atMax.getTotalShifts());
+
+        assertThrows(ArithmeticException.class, atMax::advanceShift);
+        assertThrows(ArithmeticException.class, () -> atMax.advanceShifts(1L));
+        assertThrows(ArithmeticException.class, () -> atMax.advanceShifts(Long.MAX_VALUE));
+        assertEquals(Long.MAX_VALUE, atMax.getTotalShifts());
+
+        SimClock nearMax = new SimClock(Long.MAX_VALUE - 3L);
+        assertThrows(ArithmeticException.class, () -> nearMax.advanceShifts(4L));
+        assertEquals(Long.MAX_VALUE - 3L, nearMax.getTotalShifts());
+
+        nearMax.advanceShifts(3L);
+        assertEquals(Long.MAX_VALUE, nearMax.getTotalShifts());
+    }
+
+    @Test
+    @DisplayName("SeasonPort contract holds across every shift of a 100-day year and default getDaysPerYear")
+    void seasonPortContractHoldsAcrossFullYearAndDefaultMethod() {
+        SeasonPort customPort = new SeasonPort() {
+            @Override
+            public Season getCurrentSeason() {
+                return Season.SPRING;
+            }
+
+            @Override
+            public int getDayOfYear() {
+                return 1;
+            }
+        };
+        assertEquals(100, customPort.getDaysPerYear());
+
+        SimClock clock = new SimClock();
+        SeasonPort port = clock;
+
+        for (int shift = 0; shift < 400; shift++) {
+            int expectedDay = (shift / SimClock.SHIFTS_PER_DAY) + 1;
+            Season expectedSeason = switch ((expectedDay - 1) / SimClock.DAYS_PER_SEASON) {
+                case 0 -> Season.SPRING;
+                case 1 -> Season.SUMMER;
+                case 2 -> Season.AUTUMN;
+                default -> Season.WINTER;
+            };
+            assertEquals(100, port.getDaysPerYear());
+            assertEquals(expectedDay, port.getDayOfYear());
+            assertEquals(expectedSeason, port.getCurrentSeason());
+            clock.advanceShift();
+        }
+
+        assertEquals(1, port.getDayOfYear());
+        assertEquals(Season.SPRING, port.getCurrentSeason());
+    }
+
+    @Test
+    @DisplayName("Long.MIN_VALUE initial shifts or advance count throws IllegalArgumentException")
+    void minValueNegativeBoundariesRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new SimClock(Long.MIN_VALUE));
+
+        SimClock clock = new SimClock(10L);
+        assertThrows(IllegalArgumentException.class, () -> clock.advanceShifts(Long.MIN_VALUE));
+        assertEquals(10L, clock.getTotalShifts());
     }
 }
