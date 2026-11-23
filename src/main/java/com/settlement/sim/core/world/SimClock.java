@@ -88,7 +88,7 @@ public class SimClock implements SeasonPort {
      * @return non-negative elapsed shift count
      */
     public long getTotalShifts() {
-        return totalShifts;
+        return this.totalShifts;
     }
 
     /**
@@ -97,7 +97,7 @@ public class SimClock implements SeasonPort {
      * @return current {@link Shift} ({@code MORNING}..{@code NIGHT})
      */
     public Shift getCurrentShift() {
-        return SHIFTS[(int) (totalShifts % SHIFTS_PER_DAY)];
+        return SHIFTS[(int) (this.totalShifts % SHIFTS_PER_DAY)];
     }
 
     /**
@@ -108,7 +108,7 @@ public class SimClock implements SeasonPort {
     @Override
     public int getDayOfYear() {
         // Integer division converts shifts -> elapsed days; modulo wraps every 100 days; +1 makes it 1-based
-        return (int) ((totalShifts / SHIFTS_PER_DAY) % DAYS_PER_YEAR) + 1;
+        return (int) ((this.totalShifts / SHIFTS_PER_DAY) % DAYS_PER_YEAR) + 1;
     }
 
     /**
@@ -119,7 +119,7 @@ public class SimClock implements SeasonPort {
      */
     @Override
     public Season getCurrentSeason() {
-        return SEASONS[(getDayOfYear() - 1) / DAYS_PER_SEASON];
+        return SEASONS[(this.getDayOfYear() - 1) / DAYS_PER_SEASON];
     }
 
     @Override

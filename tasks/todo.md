@@ -9,7 +9,7 @@
 
 ## Phase 1: World Persistence, Chunk Attachments & Terrain Scanner
 - [x] Implement `WorldLedgerSavedData` (`SavedDataType` + `Codec`) in `com.settlement.mc.persistence`
-- [ ] Attach per-chunk soil fertility and experience counters via `DataAttachments` (`chunk.setUnsaved(true)`)
+- [x] Attach per-chunk soil fertility and experience counters via `DataAttachments` (`chunk.markUnsaved()`)
 - [ ] Implement `scanColumnSlope(x, z)` and 4-neighbor von Neumann connected-area scan ($\Delta y \le 1$)
 - [ ] Create debug wand item to evaluate and mark a 32x32 build footprint (`setBlock(..., 3)`)
 

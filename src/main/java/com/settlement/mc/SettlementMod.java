@@ -1,5 +1,6 @@
 package com.settlement.mc;
 
+import com.settlement.mc.persistence.ChunkSoilAttachment;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -29,6 +30,7 @@ public final class SettlementMod {
      * @param modContainer NeoForge metadata container providing mod version and config registration
      */
     public SettlementMod(IEventBus modEventBus, ModContainer modContainer) {
+        ChunkSoilAttachment.ATTACHMENT_TYPES.register(modEventBus);
         LOGGER.info("Initializing {} ({})", MODID, modContainer.getModInfo().getVersion());
     }
 }

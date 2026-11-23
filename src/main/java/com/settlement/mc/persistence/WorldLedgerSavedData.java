@@ -165,13 +165,13 @@ public class WorldLedgerSavedData extends SavedData {
      * @return map of settlement ID to {@link Settlement}
      */
     public Map<UUID, Settlement> getSettlements() {
-        return Collections.unmodifiableMap(settlements);
+        return Collections.unmodifiableMap(this.settlements);
     }
 
     /**
      * @return persisted schema version of this ledger
      */
     public long getSchemaVersion() {
-        return schemaVersion;
+        return this.schemaVersion;
     }
 }

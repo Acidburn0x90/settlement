@@ -68,7 +68,7 @@ public class Settlement {
         this.stockpile = stockpile;
         this.households = new ArrayList<>(households);
         this.seed = seed;
-        this.stage = SettlementStage.forPopulation(getTotalPopulation());
+        this.stage = SettlementStage.forPopulation(this.getTotalPopulation());
     }
 
     /**
@@ -79,15 +79,15 @@ public class Settlement {
      * @return immutable {@link BalanceOutcome} for this shift
      */
     public BalanceOutcome advanceShift() {
-        BalanceOutcome outcome = MalthusianBalance.tickShift(clock, households, stockpile, seed);
+        BalanceOutcome outcome = MalthusianBalance.tickShift(this.clock, this.households, this.stockpile, this.seed);
 
         // Distribute each new dependent to the smallest household so growth stays balanced
-        if (outcome.populationDelta() > SimulationConstants.STALL_POPULATION_STEP && !households.isEmpty()) {
+        if (outcome.populationDelta() > SimulationConstants.STALL_POPULATION_STEP && !this.households.isEmpty()) {
             for (int i = 0; i < outcome.populationDelta(); i++) {
-                leastPopulatedHousehold().addDependent();
+                this.leastPopulatedHousehold().addDependent();
             }
             // Recompute population and stage only when population actually changed
-            int updatedPopulation = getTotalPopulation();
+            int updatedPopulation = this.getTotalPopulation();
             this.stage = SettlementStage.forPopulation(updatedPopulation);
             return new BalanceOutcome(
                     updatedPopulation,
@@ -116,18 +116,18 @@ public class Settlement {
             );
         }
         if (elapsedShifts == 0L) {
-            int pop = getTotalPopulation();
-            boolean stalled = pop == 0 || !stockpile.isAboveSubsistence(
+            int pop = this.getTotalPopulation();
+            boolean stalled = pop == 0 || !this.stockpile.isAboveSubsistence(
                     pop,
                     SimulationConstants.CALORIES_PER_MEMBER_PER_SHIFT,
                     SimulationConstants.GROWTH_BUFFER_SHIFTS
             );
-            return new BalanceOutcome(pop, SimulationConstants.STALL_POPULATION_STEP, stalled, stage);
+            return new BalanceOutcome(pop, SimulationConstants.STALL_POPULATION_STEP, stalled, this.stage);
         }
 
         BalanceOutcome lastOutcome = null;
         for (long i = 0L; i < elapsedShifts; i++) {
-            lastOutcome = advanceShift();
+            lastOutcome = this.advanceShift();
         }
         return lastOutcome;
     }
@@ -139,9 +139,9 @@ public class Settlement {
      * @return least-populated {@link Household}
      */
     private Household leastPopulatedHousehold() {
-        Household smallest = households.get(0);
-        for (int i = 1, n = households.size(); i < n; i++) {
-            Household candidate = households.get(i);
+        Household smallest = this.households.get(0);
+        for (int i = 1, n = this.households.size(); i < n; i++) {
+            Household candidate = this.households.get(i);
             int candidateMembers = candidate.getTotalMembers();
             int smallestMembers = smallest.getTotalMembers();
             if (candidateMembers < smallestMembers
@@ -159,39 +159,39 @@ public class Settlement {
      */
     public int getTotalPopulation() {
         int total = 0;
-        for (int i = 0, n = households.size(); i < n; i++) {
-            total = Math.addExact(total, households.get(i).getTotalMembers());
+        for (int i = 0, n = this.households.size(); i < n; i++) {
+            total = Math.addExact(total, this.households.get(i).getTotalMembers());
         }
         return total;
     }
 
     /** @return unique settlement identifier */
     public UUID getId() {
-        return id;
+        return this.id;
     }
 
     /** @return persistence-safe PRNG seed */
     public long getSeed() {
-        return seed;
+        return this.seed;
     }
 
     /** @return current Christaller hierarchy stage */
     public SettlementStage getStage() {
-        return stage;
+        return this.stage;
     }
 
     /** @return settlement simulation clock */
     public SimClock getClock() {
-        return clock;
+        return this.clock;
     }
 
     /** @return communal granary stockpile */
     public Stockpile getStockpile() {
-        return stockpile;
+        return this.stockpile;
     }
 
     /** @return unmodifiable view of constituent households */
     public List<Household> getHouseholds() {
-        return Collections.unmodifiableList(households);
+        return Collections.unmodifiableList(this.households);
     }
 }
