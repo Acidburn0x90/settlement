@@ -47,7 +47,7 @@ public class Stockpile {
      * @return combined {@code calorieUnits + seedUnits}
      */
     public long getTotalUnits() {
-        return calorieUnits + seedUnits;
+        return this.calorieUnits + this.seedUnits;
     }
 
     /**
@@ -56,7 +56,7 @@ public class Stockpile {
      * @return remaining free storage capacity ({@code >= 0})
      */
     private long remainingCapacity() {
-        return capacity - getTotalUnits();
+        return this.capacity - this.getTotalUnits();
     }
 
     /**
@@ -71,8 +71,8 @@ public class Stockpile {
             throw new IllegalArgumentException("amount must be >= 0");
         }
         // Compute accepted amount BEFORE mutating calorieUnits (avoids overflow and stale remaining checks)
-        long accepted = Math.min(amount, remainingCapacity());
-        calorieUnits += accepted;
+        long accepted = Math.min(amount, this.remainingCapacity());
+        this.calorieUnits += accepted;
         return accepted;
     }
 
@@ -88,8 +88,8 @@ public class Stockpile {
             throw new IllegalArgumentException("amount must be >= 0");
         }
         // Clamp against shared capacity without altering calorieUnits
-        long accepted = Math.min(amount, remainingCapacity());
-        seedUnits += accepted;
+        long accepted = Math.min(amount, this.remainingCapacity());
+        this.seedUnits += accepted;
         return accepted;
     }
 
@@ -108,8 +108,8 @@ public class Stockpile {
             throw new IllegalArgumentException("requested must be >= 0");
         }
         // Cap withdrawal to available calorieUnits; never touches ring-fenced seedUnits
-        long withdrawn = Math.min(requested, calorieUnits);
-        calorieUnits -= withdrawn;
+        long withdrawn = Math.min(requested, this.calorieUnits);
+        this.calorieUnits -= withdrawn;
         return withdrawn;
     }
 
@@ -130,7 +130,7 @@ public class Stockpile {
             // Use multiplyExact so huge buffers never wrap negative and falsely return true
             long perShift = Math.multiplyExact((long) caloriesPerShift, population);
             long required = Math.multiplyExact(perShift, shiftsBuffer);
-            return calorieUnits >= required;
+            return this.calorieUnits >= required;
         } catch (ArithmeticException overflow) {
             return false;
         }
@@ -140,20 +140,20 @@ public class Stockpile {
      * @return current consumable calorie units
      */
     public long getCalorieUnits() {
-        return calorieUnits;
+        return this.calorieUnits;
     }
 
     /**
      * @return current ring-fenced seed-corn units
      */
     public long getSeedUnits() {
-        return seedUnits;
+        return this.seedUnits;
     }
 
     /**
      * @return maximum combined storage capacity
      */
     public long getCapacity() {
-        return capacity;
+        return this.capacity;
     }
 }

@@ -54,7 +54,7 @@ public enum SettlementStage {
      * @return minimum population threshold ({@code >= 0})
      */
     public int getMinPopulation() {
-        return minPopulation;
+        return this.minPopulation;
     }
 
     /**
@@ -63,7 +63,7 @@ public enum SettlementStage {
      * @return price multiplier (e.g., {@code 0.75} means 25% cheaper trades)
      */
     public double getTradeDiscountMultiplier() {
-        return tradeDiscountMultiplier;
+        return this.tradeDiscountMultiplier;
     }
 
     /**
@@ -72,7 +72,7 @@ public enum SettlementStage {
      * @return XP gain multiplier (e.g., {@code 1.50} means 50% faster leveling)
      */
     public double getXpMultiplier() {
-        return xpMultiplier;
+        return this.xpMultiplier;
     }
 
     /**

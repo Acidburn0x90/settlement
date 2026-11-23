@@ -74,7 +74,7 @@ public class Household {
      * @return non-null household UUID
      */
     public UUID getId() {
-        return id;
+        return this.id;
     }
 
     /**
@@ -83,7 +83,7 @@ public class Household {
      * @return {@code workers + dependents}
      */
     public int getTotalMembers() {
-        return Math.addExact(workers, dependents);
+        return Math.addExact(this.workers, this.dependents);
     }
 
     /**
@@ -92,7 +92,7 @@ public class Household {
      * @return worker count ({@code >= 0})
      */
     public int getWorkers() {
-        return workers;
+        return this.workers;
     }
 
     /**
@@ -101,7 +101,7 @@ public class Household {
      * @return dependent count ({@code >= 0})
      */
     public int getDependents() {
-        return dependents;
+        return this.dependents;
     }
 
     /**
@@ -114,7 +114,7 @@ public class Household {
      */
     public double dependencyRatio() {
         // Cast to double first so Java performs floating-point division instead of truncating
-        return (double) getTotalMembers() / Math.max(SimulationConstants.MIN_WORKERS_FOR_RATIO, workers);
+        return (double) this.getTotalMembers() / Math.max(SimulationConstants.MIN_WORKERS_FOR_RATIO, this.workers);
     }
 
     /**
@@ -123,7 +123,7 @@ public class Household {
      * @return current {@code domesticCalories} ({@code >= 0})
      */
     public long getDomesticCalories() {
-        return domesticCalories;
+        return this.domesticCalories;
     }
 
     /**
@@ -132,7 +132,7 @@ public class Household {
      * @return current {@code domesticSeed} ({@code >= 0})
      */
     public long getDomesticSeed() {
-        return domesticSeed;
+        return this.domesticSeed;
     }
 
     /**
@@ -147,9 +147,9 @@ public class Household {
      */
     public long consumeShift(int caloriesPerMember) {
         if (caloriesPerMember < 0) throw new IllegalArgumentException("Calories must be >= 0");
-        long needed = (long) getTotalMembers() * caloriesPerMember;
-        long consumed = Math.min(needed, domesticCalories);
-        domesticCalories -= consumed;
+        long needed = (long) this.getTotalMembers() * caloriesPerMember;
+        long consumed = Math.min(needed, this.domesticCalories);
+        this.domesticCalories -= consumed;
         return needed - consumed;
     }
 
@@ -185,15 +185,15 @@ public class Household {
         long remaining = harvest;
 
         // 1. Ring-fence seed-corn first so next season's planting is always protected
-        long seedNeeded = Math.max(SimulationConstants.ZERO_RESERVE, seedTarget - domesticSeed);
+        long seedNeeded = Math.max(SimulationConstants.ZERO_RESERVE, seedTarget - this.domesticSeed);
         long toSeed = Math.min(remaining, seedNeeded);
-        long nextSeed = Math.addExact(domesticSeed, toSeed);
+        long nextSeed = Math.addExact(this.domesticSeed, toSeed);
         remaining -= toSeed;
 
         // 2. Top up domestic subsistence calories before any surplus is shared
-        long bufferNeeded = Math.max(SimulationConstants.ZERO_RESERVE, subsistenceBuffer - domesticCalories);
+        long bufferNeeded = Math.max(SimulationConstants.ZERO_RESERVE, subsistenceBuffer - this.domesticCalories);
         long toBuffer = Math.min(remaining, bufferNeeded);
-        long nextCalories = Math.addExact(domesticCalories, toBuffer);
+        long nextCalories = Math.addExact(this.domesticCalories, toBuffer);
         remaining -= toBuffer;
 
         // 3. Communal Surplus Share: contribute a fraction of true surplus; clamp to prevent 53-bit double rounding over-deduction
@@ -236,7 +236,7 @@ public class Household {
      * @throws ArithmeticException if {@code workers} would overflow {@code Integer.MAX_VALUE}
      */
     public boolean promoteDependentToWorker() {
-        if (dependents > 0) {
+        if (this.dependents > 0) {
             // Compute overflow-safe increment before mutating either counter
             int nextWorkers = Math.addExact(this.workers, 1);
             this.workers = nextWorkers;
